@@ -13,6 +13,7 @@
   <div id="screen-fishing" class="screen active">
     <div id="fishing-hud">
       <div id="fishing-hud-left">
+        <span id="fishing-zone-label"></span>
         <div id="fishing-save-btns">
           <button class="save-tb-btn" id="btn-save">EXPORT</button>
           <button class="save-tb-btn" id="btn-load">IMPORT</button>
@@ -20,13 +21,16 @@
       </div>
       <span id="fishing-title">UNTITLED OCEAN IDLE</span>
       <div id="fishing-hud-right">
-        <button id="btn-bait" class="bait-btn" style="display:none">BAIT</button>
         <span id="fishing-gold">◈ <strong id="gold-fishing">0</strong></span>
       </div>
     </div>
 
     <div id="canvas-wrap">
       <canvas id="game-canvas"></canvas>
+      <div id="ability-bar">
+        <button id="btn-bait" class="ability-btn" style="display:none" title="BAIT">B</button>
+        <button id="btn-multicast" class="ability-btn" style="display:none" title="MULTI-CAST">M</button>
+      </div>
       <div id="zone-overlay">
         <div id="zone-overlay-code">ZONE-00</div>
         <div id="zone-overlay-name">THE COAST</div>
@@ -50,8 +54,16 @@
       <span class="gold-display">◈ <strong id="gold-shop">0</strong></span>
     </div>
     <div id="shop-content" class="screen-content">
-      <div id="inventory-grid"></div>
-      <button id="btn-sell-all" class="sell-all-btn" style="display:none">[ SELL ALL ]</button>
+      <div id="shop-layout">
+        <div id="shop-left">
+          <div id="shop-passive-info" style="display:none"></div>
+          <button id="btn-sell-all" class="sell-all-btn" style="display:none">[ SELL ALL ]</button>
+          <div id="inventory-grid"></div>
+        </div>
+        <div id="shop-right">
+          <div id="fishmonger-art"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -62,6 +74,7 @@
       <span class="screen-title">UPGRADES</span>
       <span class="gold-display">◈ <strong id="gold-upgrades">0</strong></span>
     </div>
+    <div id="upgrades-tabs"></div>
     <div id="upgrades-content" class="screen-content">
       <div id="upgrades-grid"></div>
     </div>

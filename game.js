@@ -12,7 +12,7 @@ const ZONES = [
     id: 0, name: 'THE COAST', code: 'ZONE-00', depth: 5, tier: 'BEGINNER',
     unlockCost: null, implemented: true,
     fish: ['glow_anchovy', 'blister_crab', 'hollow_mackerel', 'tide_gazer', 'shore_wraith'],
-    spawnWeights: [50, 30, 10, 8, 2], maxFish: 4,
+    spawnWeights: [40, 30, 20, 8, 2], maxFish: 4,
     ambientMessages: [
       '> The water is warmer than it should be for this time of year.',
       '> Something glints under the surface. Your scanner shows nothing.',
@@ -25,7 +25,7 @@ const ZONES = [
     id: 1, name: 'THE SHALLOWS', code: 'ZONE-01', depth: 20, tier: 'BEGINNER',
     unlockCost: 200, implemented: true,
     fish: ['pale_goby', 'linked_eel', 'jaw_fish', 'signal_carp', 'mirror_scale'],
-    spawnWeights: [50, 30, 10, 8, 2], maxFish: 5,
+    spawnWeights: [40, 30, 20, 8, 2], maxFish: 5,
     ambientMessages: [
       '> The shallows are quieter than they should be.',
       '> [PING] Sonar returned an unexpected shape. Logged and ignored.',
@@ -38,7 +38,7 @@ const ZONES = [
     id: 2, name: 'THE SANDBANK', code: 'ZONE-02', depth: 60, tier: 'BEGINNER',
     unlockCost: 600, implemented: true,
     fish: ['dust_feeder', 'multi_eye', 'the_knot', 'depth_worm', 'sandborn'],
-    spawnWeights: [50, 30, 10, 8, 2], maxFish: 5,
+    spawnWeights: [40, 30, 20, 8, 2], maxFish: 5,
     ambientMessages: [
       '> The sandbank shifts. It shifted the wrong direction.',
       '> Bio-scanner shows density clusters. Organic. Dense.',
@@ -51,7 +51,7 @@ const ZONES = [
     id: 3, name: 'THE REEF', code: 'ZONE-03', depth: 150, tier: 'BEGINNER',
     unlockCost: 2000, implemented: true,
     fish: ['irradiated_perch', 'rust_eel', 'deep_scout', 'abyssal_leech', 'the_watcher'],
-    spawnWeights: [50, 30, 10, 8, 2], maxFish: 5,
+    spawnWeights: [40, 30, 20, 8, 2], maxFish: 5,
     ambientMessages: [
       '> The reef is alive. It is also watching.',
       '> [SONAR PING] Contact at 140m. Classification: ERROR. Reclassification: IGNORE.',
@@ -192,11 +192,21 @@ const FISH = {
     desc: 'You cannot be certain if you caught it, or if it allowed itself to be caught.',
   },
 
-  // ── SPECIAL: COAST CRAB (click mechanic, not spawned normally) ──
+  // ── SPECIAL: clickable creatures per zone ──
   shore_crab: {
     name: 'SHORE CRAB', zone: 0, rarity: 'RARE', goldValue: 50,
     speed: 0, size: 22, wave: null,
     desc: 'Spotted watching from the rocks. You were faster.',
+  },
+  tide_starfish: {
+    name: 'TIDE STARFISH', zone: 1, rarity: 'RARE', goldValue: 65,
+    speed: 0, size: 20, wave: null,
+    desc: 'Five arms. Each one points somewhere different.',
+  },
+  buried_dollar: {
+    name: 'BURIED DOLLAR', zone: 2, rarity: 'RARE', goldValue: 90,
+    speed: 0, size: 18, wave: null,
+    desc: 'Partially exposed. The sand was hiding it deliberately.',
   },
 };
 
@@ -217,25 +227,29 @@ const COAST_ROCKS = [
 
 const UPGRADE_CATEGORIES = [
   { name: 'LINE CONTROL', ids: ['faster_reel', 'instant_retract', 'rod_speed'] },
-  { name: 'TARGETING',    ids: ['targeting_scope', 'precision_hook'] },
+  { name: 'TARGETING',    ids: ['targeting_scope'] },
   { name: 'AUTOMATION',   ids: ['salvaged_net', 'sell_batch', 'fish_density'] },
-  { name: 'ABILITIES',    ids: ['bait_bomb'] },
+  { name: 'ABILITIES',    ids: ['bait_bomb', 'bait_cooldown', 'bait_strength', 'multi_cast', 'multi_cooldown', 'multi_duration'] },
 ];
 
 const UPGRADES_DEF = [
   // LINE CONTROL
-  { id: 'faster_reel',     name: 'FASTER REEL',       desc: 'Recast cooldown reduced by 0.4s per level',                                   baseCost: 15,  max: 4,  costScale: 1.8, revealAt: 0   },
-  { id: 'instant_retract', name: 'QUICK RELEASE',     desc: 'Right-click on canvas to instantly retract your hook',                        baseCost: 25,  max: 1,  costScale: 1,   revealAt: 0   },
-  { id: 'rod_speed',       name: 'OVERCLOCKED DRIVE', desc: 'Increases max cast speed by +80px/s per level. Tune it in The Boat.',         baseCost: 55,  max: 5,  costScale: 2.0, revealAt: 10  },
+  { id: 'faster_reel',     name: 'FASTER RELOAD',     desc: 'Cooldown on recast reduced by 0.4s per level',                                baseCost: 15,  max: 4,  costScale: 1.8, revealAt: 0   },
+  { id: 'instant_retract', name: 'QUICK RELEASE',     desc: 'Right-click to retract your hook. Each level increases retract speed by 40%',  baseCost: 25,  max: 5,  costScale: 1.6, revealAt: 0   },
+  { id: 'rod_speed',       name: 'FASTER CAST',       desc: 'Increases max cast speed by 20% per level. Tune it in The Boat.',             baseCost: 55,  max: 5,  costScale: 2.0, revealAt: 10  },
   // TARGETING
   { id: 'targeting_scope', name: 'TARGETING SCOPE',   desc: 'Hook catch radius +18% per level',                                            baseCost: 40,  max: 5,  costScale: 1.9, revealAt: 32  },
-  { id: 'precision_hook',  name: 'PRECISION HOOK',    desc: 'Catch radius for RARE+ fish +20% per level',                                  baseCost: 90,  max: 4,  costScale: 2.1, revealAt: 80  },
   // AUTOMATION
   { id: 'salvaged_net',    name: 'SALVAGED NET',      desc: '+1 passive fish caught every 20 seconds per level',                           baseCost: 60,  max: 8,  costScale: 1.7, revealAt: 50  },
   { id: 'sell_batch',      name: 'BATCH SELLER',      desc: 'Unlocks the [SELL ALL] button in the shop',                                   baseCost: 30,  max: 1,  costScale: 1,   revealAt: 20  },
   { id: 'fish_density',    name: 'DEEP BROADCAST',    desc: '+5% max active fish per level. The water gets crowded.',                      baseCost: 45,  max: 10, costScale: 1.6, revealAt: 15  },
   // ABILITIES
   { id: 'bait_bomb',       name: 'BAIT BOMB',         desc: 'Unlocks the BAIT button. Scatter bait to draw a frenzy of fish for 10s.',    baseCost: 200, max: 1,  costScale: 1,   revealAt: 150 },
+  { id: 'bait_cooldown',   name: 'BAIT EFFICIENCY',   desc: 'Reduces bait cooldown by 30s per level.',                                     baseCost: 300, max: 5,  costScale: 1.8, revealAt: 300 },
+  { id: 'bait_strength',   name: 'BAIT POTENCY',      desc: 'Bait attracts +6 extra fish per level.',                                      baseCost: 350, max: 5,  costScale: 1.7, revealAt: 300 },
+  { id: 'multi_cast',      name: 'MULTI-CAST',        desc: 'Unlocks MULTI-CAST. Casts your line in 3 directions for 15s. 3 min cooldown.',baseCost: 500, max: 1,  costScale: 1,   revealAt: 400 },
+  { id: 'multi_cooldown',  name: 'MULTI-CAST SPEED',  desc: 'Reduces multi-cast cooldown by 15s per level.',                               baseCost: 600, max: 5,  costScale: 1.8, revealAt: 600 },
+  { id: 'multi_duration',  name: 'MULTI-CAST EXTEND', desc: 'Increases multi-cast duration by 3s per level.',                              baseCost: 550, max: 5,  costScale: 1.7, revealAt: 600 },
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -250,14 +264,17 @@ let state = {
   inventory: {},
   upgrades: {
     faster_reel: 0, instant_retract: 0, rod_speed: 0,
-    targeting_scope: 0, precision_hook: 0,
+    targeting_scope: 0,
     salvaged_net: 0, sell_batch: 0, fish_density: 0,
-    bait_bomb: 0,
+    bait_bomb: 0, bait_cooldown: 0, bait_strength: 0,
+    multi_cast: 0, multi_cooldown: 0, multi_duration: 0,
   },
   stats: { totalCaught: 0, totalCasts: 0 },
   passiveTimer: 0,
   baitTimer: 0,
   baitCooldown: 0,
+  multiCastTimer: 0,
+  multiCastCooldown: 0,
   boatSettings: { rodSpeedFactor: 1.0 },
   flags: {
     shopUnlocked:     false,
@@ -272,6 +289,7 @@ let state = {
     boatVisited:      false,
     saveUnlocked:     false,
     baitVisible:      false,
+    multiCastVisible: false,
   },
 };
 
@@ -282,7 +300,8 @@ function getRecastCooldown() {
 }
 
 function getCastSpeed() {
-  const maxSpeed = 450 + state.upgrades.rod_speed * 80;
+  const baseSpeed = 450;
+  const maxSpeed = baseSpeed * (1 + state.upgrades.rod_speed * 0.20);
   return maxSpeed * state.boatSettings.rodSpeedFactor;
 }
 
@@ -293,14 +312,7 @@ function getMaxFish() {
 function getCatchRadius(typeId) {
   const base  = 36;
   const scope = base * state.upgrades.targeting_scope * 0.18;
-  let radius  = base + scope;
-  if (typeId) {
-    const r = FISH[typeId].rarity;
-    if (r === 'RARE' || r === 'EPIC' || r === 'LEGENDARY') {
-      radius *= (1 + state.upgrades.precision_hook * 0.20);
-    }
-  }
-  return radius;
+  return base + scope;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -320,6 +332,8 @@ const cv = {
   ambientTimer: 28,
   fishIdCounter: 0,
   crab: { active: false, rockIdx: 0, peekAnim: 0, peekDir: 0, lingerTimer: 0, spawnTimer: 45 },
+  starfish: { active: false, fx: 0, fy: 0, peekAnim: 0, peekDir: 0, lingerTimer: 0, spawnTimer: 50 },
+  sandDollar: { active: false, fx: 0, fy: 0, peekAnim: 0, peekDir: 0, lingerTimer: 0, spawnTimer: 55 },
   screenShake: { x: 0, y: 0 },
 };
 
@@ -341,12 +355,13 @@ function spawnFish() {
 
   const dir   = Math.random() < 0.5 ? 1 : -1;
   const baseY = canvasH * 0.1 + Math.random() * canvasH * 0.76;
+  const sizeScale = 0.8 + Math.random() * 0.4; // 0.8x to 1.2x
   cv.fish.push({
     id: cv.fishIdCounter++, type: typeId,
     x: dir === 1 ? -80 : canvasW + 80,
     baseY, currentY: baseY, dir,
     waveOffset: Math.random() * Math.PI * 2,
-    caught: false, catchAnim: 0,
+    caught: false, catchAnim: 0, sizeScale,
   });
 }
 
@@ -367,12 +382,28 @@ function castHook(tx, ty) {
     x: canvasW / 2, y: canvasH + 10,
     ox: canvasW / 2, oy: canvasH + 10,
     tx, ty, state: 'traveling', lingerTimer: 0,
-    biteChecked: false,
-    stuckClicks: 0, stuckThreshold: 4, stuckTimer: 0,
-    shakeX: 0, shakeY: 0, shakeIntensity: 6,
   };
   state.stats.totalCasts++;
   audio.play('cast');
+
+  // Multi-cast: fire two extra hooks with offset
+  if (state.multiCastTimer > 0) {
+    const spread = 120;
+    for (const offset of [-spread, spread]) {
+      const mtx = Math.max(20, Math.min(canvasW - 20, tx + offset));
+      setTimeout(() => {
+        if (cv.cooldown > 0) return;
+        const extraHook = {
+          x: canvasW / 2, y: canvasH + 10,
+          ox: canvasW / 2, oy: canvasH + 10,
+          tx: mtx, ty, state: 'traveling', lingerTimer: 0,
+          isExtra: true,
+        };
+        cv.extraHooks = cv.extraHooks || [];
+        cv.extraHooks.push(extraHook);
+      }, 60);
+    }
+  }
 }
 
 // ─── Economy ───
@@ -399,10 +430,20 @@ function buyUpgrade(id) {
 function useBait() {
   if (state.baitCooldown > 0 || state.upgrades.bait_bomb < 1) return;
   state.baitTimer   = 10;
-  state.baitCooldown = 90;
-  for (let i = 0; i < 18; i++) setTimeout(() => spawnFish(), i * 80);
+  state.baitCooldown = 300 - state.upgrades.bait_cooldown * 30;
+  const fishCount = 18 + state.upgrades.bait_strength * 6;
+  for (let i = 0; i < fishCount; i++) setTimeout(() => spawnFish(), i * 80);
   addLog('> BAIT DEPLOYED. Something stirs in the water.');
   updateBaitBtn();
+}
+
+function useMultiCast() {
+  if (state.multiCastCooldown > 0 || state.upgrades.multi_cast < 1) return;
+  const duration = 15 + state.upgrades.multi_duration * 3;
+  state.multiCastTimer = duration;
+  state.multiCastCooldown = 180 - state.upgrades.multi_cooldown * 15;
+  addLog(`> MULTI-CAST ACTIVE for ${duration}s. Lines fly in triplicate.`);
+  updateMultiCastBtn();
 }
 
 function sellFish(typeId) {
@@ -501,8 +542,18 @@ function checkMilestones() {
   if (!f.baitVisible && state.upgrades.bait_bomb >= 1) {
     f.baitVisible = true;
     const b = document.getElementById('btn-bait');
-    b.style.display = 'block';
+    b.style.display = 'flex';
+    b.classList.add('pulse-new');
     b.offsetHeight;
+  }
+
+  // Multi-cast button visible
+  if (!f.multiCastVisible && state.upgrades.multi_cast >= 1) {
+    f.multiCastVisible = true;
+    const mc = document.getElementById('btn-multicast');
+    mc.style.display = 'flex';
+    mc.classList.add('pulse-new');
+    mc.offsetHeight;
   }
 
   // Gold counter after first catch
@@ -516,10 +567,28 @@ function updateBaitBtn() {
   if (!state.flags.baitVisible) return;
   if (state.baitCooldown > 0) {
     btn.classList.add('cooldown');
-    btn.textContent = `BAIT (${Math.ceil(state.baitCooldown)}s)`;
+    btn.classList.remove('pulse-new');
+    btn.textContent = Math.ceil(state.baitCooldown);
+    btn.title = `BAIT (${Math.ceil(state.baitCooldown)}s)`;
   } else {
     btn.classList.remove('cooldown');
-    btn.textContent = 'BAIT';
+    btn.textContent = 'B';
+    btn.title = 'BAIT';
+  }
+}
+
+function updateMultiCastBtn() {
+  const btn = document.getElementById('btn-multicast');
+  if (state.upgrades.multi_cast < 1) return;
+  if (state.multiCastCooldown > 0) {
+    btn.classList.add('cooldown');
+    btn.classList.remove('pulse-new');
+    btn.textContent = Math.ceil(state.multiCastCooldown);
+    btn.title = `MULTI-CAST (${Math.ceil(state.multiCastCooldown)}s)`;
+  } else {
+    btn.classList.remove('cooldown');
+    btn.textContent = 'M';
+    btn.title = 'MULTI-CAST';
   }
 }
 
@@ -543,6 +612,7 @@ function updateZoneOverlay() {
   const zone = ZONES[state.currentZone];
   document.getElementById('zone-overlay-code').textContent = zone.code;
   document.getElementById('zone-overlay-name').textContent = zone.name;
+  document.getElementById('fishing-zone-label').textContent = zone.name;
 }
 
 function flashZoneOverlay() {
@@ -568,10 +638,10 @@ function switchScreen(to) {
     if (to === 'screen-shop') {
       if (!state.flags.shopVisited) {
         state.flags.shopVisited = true;
-        // Log button appears on next return to water
         state.flags.logUnlocked = true;
         addLog('> FISHMONGER\'S REFUGE: connection established.');
         addLog('> Sell your catch. Return to water.');
+        document.getElementById('btn-back-shop').classList.add('pulse-hint');
       }
       renderShop();
     }
@@ -651,7 +721,7 @@ function loop(timestamp) {
   const dt = Math.min(t - currentT, 0.1);
   currentT = t;
   update(dt, t);
-  draw();
+  if (document.getElementById('screen-fishing').classList.contains('active')) draw();
   requestAnimationFrame(loop);
 }
 
@@ -688,6 +758,13 @@ function update(dt, t) {
     state.baitCooldown = Math.max(0, state.baitCooldown - dt);
     updateBaitBtn();
   }
+  if (state.multiCastTimer > 0) {
+    state.multiCastTimer = Math.max(0, state.multiCastTimer - dt);
+  }
+  if (state.multiCastCooldown > 0) {
+    state.multiCastCooldown = Math.max(0, state.multiCastCooldown - dt);
+    updateMultiCastBtn();
+  }
 
   if (cv.hook) {
     const h = cv.hook;
@@ -705,43 +782,42 @@ function update(dt, t) {
     } else if (h.state === 'lingering') {
       h.lingerTimer += dt;
       checkHookCollision(h.x, h.y);
-      // Bite check — once per cast, after 0.15s of lingering
-      if (!h.biteChecked && h.lingerTimer >= 0.15) {
-        h.biteChecked = true;
-        if (Math.random() < 0.20) {
-          for (const f of cv.fish) {
-            if (f.caught) continue;
-            const dx = h.x - f.x, dy = h.y - f.currentY;
-            if (Math.sqrt(dx * dx + dy * dy) < getCatchRadius(f.type) * 3.0) {
-              h.state = 'stuck';
-              h.stuckThreshold = 3 + Math.floor(Math.random() * 3);
-              h.stuckTimer = 0;
-              h.shakeIntensity = 5;
-              addLog('> [ALERT] Something has the line.');
-              break;
-            }
-          }
-        }
-      }
-      if (h.state !== 'stuck' && h.lingerTimer >= 0.44) h.state = 'retracting';
-    } else if (h.state === 'stuck') {
-      h.stuckTimer += dt;
-      h.shakeIntensity = Math.min(16, 5 + h.stuckTimer * 2.5);
-      h.shakeX = (Math.random() - 0.5) * h.shakeIntensity;
-      h.shakeY = (Math.random() - 0.5) * h.shakeIntensity;
-      cv.screenShake.x = h.shakeX * 0.3;
-      cv.screenShake.y = h.shakeY * 0.3;
-      if (h.stuckTimer >= 5) {
-        h.state = 'retracting'; h.shakeX = 0; h.shakeY = 0;
-        cv.screenShake.x = 0; cv.screenShake.y = 0;
-      }
+      if (h.lingerTimer >= 0.44) h.state = 'retracting';
     } else if (h.state === 'retracting') {
       const dx = h.ox - h.x, dy = h.oy - h.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      const step = Math.max(600, SPEED * 1.7) * dt;
+      const retractMult = h.quickRetract ? (1 + (Math.max(0, state.upgrades.instant_retract - 1) * 0.40)) : 1;
+      const step = Math.max(SPEED, 600) * retractMult * dt;
       if (step >= dist) { cv.hook = null; cv.cooldown = getRecastCooldown(); }
       else { h.x += (dx / dist) * step; h.y += (dy / dist) * step; }
       checkHookCollision(h.x, h.y); // ← catch on retract
+    }
+  }
+
+  // Extra hooks from multi-cast
+  if (cv.extraHooks && cv.extraHooks.length) {
+    const SPEED = getCastSpeed();
+    for (let i = cv.extraHooks.length - 1; i >= 0; i--) {
+      const h = cv.extraHooks[i];
+      if (h.state === 'traveling') {
+        const dx = h.tx - h.x, dy = h.ty - h.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const step = SPEED * dt;
+        if (step >= dist) { h.x = h.tx; h.y = h.ty; h.state = 'lingering'; h.lingerTimer = 0; }
+        else { h.x += (dx / dist) * step; h.y += (dy / dist) * step; }
+        checkHookCollision(h.x, h.y);
+      } else if (h.state === 'lingering') {
+        h.lingerTimer += dt;
+        checkHookCollision(h.x, h.y);
+        if (h.lingerTimer >= 0.44) h.state = 'retracting';
+      } else if (h.state === 'retracting') {
+        const dx = h.ox - h.x, dy = h.oy - h.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const step = Math.max(SPEED, 600) * dt;
+        if (step >= dist) { cv.extraHooks.splice(i, 1); continue; }
+        else { h.x += (dx / dist) * step; h.y += (dy / dist) * step; }
+        checkHookCollision(h.x, h.y);
+      }
     }
   }
 
@@ -765,11 +841,18 @@ function update(dt, t) {
     state.passiveTimer += dt;
     if (state.passiveTimer >= 20) {
       state.passiveTimer -= 20;
-      const common = zone.fish[0];
+      const highestZoneId = Math.max(...state.unlockedZones.filter(z => ZONES[z].implemented));
+      const hz = ZONES[highestZoneId];
       const n = state.upgrades.salvaged_net;
-      state.inventory[common] = (state.inventory[common] || 0) + n;
+      for (let pi = 0; pi < n; pi++) {
+        const weights = hz.spawnWeights;
+        const total = weights.reduce((a, b) => a + b, 0);
+        let roll = Math.random() * total, passiveType = hz.fish[0];
+        for (let wi = 0; wi < hz.fish.length; wi++) { roll -= weights[wi]; if (roll <= 0) { passiveType = hz.fish[wi]; break; } }
+        state.inventory[passiveType] = (state.inventory[passiveType] || 0) + 1;
+      }
       state.stats.totalCaught += n;
-      addLog(`> NET CATCH: +${n}× ${FISH[common].name}`);
+      addLog(`> NET CATCH: +${n} fish from ${hz.name}`);
       checkMilestones();
       updateAllGoldDisplays();
     }
@@ -782,6 +865,8 @@ function update(dt, t) {
   }
 
   if (state.currentZone === 0) updateCrab(dt);
+  if (state.currentZone === 1) updateZoneSpecial(cv.starfish, dt);
+  if (state.currentZone === 2) updateZoneSpecial(cv.sandDollar, dt);
 
   checkMilestones();
 }
@@ -839,6 +924,55 @@ function clickCrab(cx, cy) {
   return false;
 }
 
+function updateZoneSpecial(obj, dt) {
+  if (!obj.active) {
+    obj.spawnTimer -= dt;
+    if (obj.spawnTimer <= 0) {
+      obj.active = true;
+      obj.fx = 0.15 + Math.random() * 0.7;
+      obj.fy = 0.78 + Math.random() * 0.08;
+      obj.peekAnim = 0; obj.peekDir = 1; obj.lingerTimer = 0;
+    }
+    return;
+  }
+  if (obj.peekDir === 1) {
+    obj.peekAnim = Math.min(1, obj.peekAnim + dt / 0.6);
+    if (obj.peekAnim >= 1) { obj.peekDir = 0; obj.lingerTimer = 5; }
+  } else if (obj.peekDir === 0) {
+    obj.lingerTimer -= dt;
+    if (obj.lingerTimer <= 0) obj.peekDir = -1;
+  } else {
+    obj.peekAnim = Math.max(0, obj.peekAnim - dt / 0.5);
+    if (obj.peekAnim <= 0) { obj.active = false; obj.spawnTimer = 40 + Math.random() * 50; }
+  }
+}
+
+function clickZoneSpecial(cx, cy) {
+  if (state.currentZone === 0) return clickCrab(cx, cy);
+  if (state.currentZone === 1) return clickSpecial(cv.starfish, 'tide_starfish', cx, cy);
+  if (state.currentZone === 2) return clickSpecial(cv.sandDollar, 'buried_dollar', cx, cy);
+  return false;
+}
+
+function clickSpecial(obj, typeId, cx, cy) {
+  if (!obj.active || obj.peekAnim < 0.3) return false;
+  const rx = obj.fx * canvasW;
+  const ry = obj.fy * canvasH;
+  if (Math.sqrt((cx - rx) ** 2 + (cy - ry) ** 2) < 36) {
+    const def = FISH[typeId];
+    state.inventory[typeId] = (state.inventory[typeId] || 0) + 1;
+    state.stats.totalCaught++;
+    cv.catchFlashes.push({ x: rx, y: ry, timer: 1.6, text: `${def.name} [RARE]`, color: RARITY_COLORS.RARE.glow });
+    addLog(`> CAUGHT: ${def.name} (RARE) — ${def.goldValue}◈`, 'rare');
+    audio.play('catch_rare');
+    obj.active = false;
+    obj.spawnTimer = 35 + Math.random() * 45;
+    checkMilestones();
+    return true;
+  }
+  return false;
+}
+
 // ═══════════════════════════════════════════════════════════════
 //  CANVAS DRAWING
 // ═══════════════════════════════════════════════════════════════
@@ -848,9 +982,14 @@ function draw() {
 
   if (state.currentZone === 0) {
     const bg = ctx.createLinearGradient(0, 0, 0, canvasH);
-    bg.addColorStop(0, '#003828'); bg.addColorStop(0.5, '#001e14'); bg.addColorStop(1, '#000e08');
+    bg.addColorStop(0, '#005540'); bg.addColorStop(0.5, '#003322'); bg.addColorStop(1, '#001a10');
     ctx.fillStyle = bg; ctx.fillRect(0, 0, canvasW, canvasH);
-    ctx.strokeStyle = '#003322'; ctx.lineWidth = 0.5;
+    ctx.strokeStyle = '#004433'; ctx.lineWidth = 0.5;
+  } else if (state.currentZone <= 2) {
+    const bg = ctx.createLinearGradient(0, 0, 0, canvasH);
+    bg.addColorStop(0, '#003020'); bg.addColorStop(0.5, '#001e12'); bg.addColorStop(1, '#001008');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, canvasW, canvasH);
+    ctx.strokeStyle = '#002a14'; ctx.lineWidth = 0.5;
   } else {
     const bg = ctx.createLinearGradient(0, 0, 0, canvasH);
     bg.addColorStop(0, '#001508'); bg.addColorStop(0.5, '#000e05'); bg.addColorStop(1, '#000802');
@@ -869,13 +1008,15 @@ function draw() {
     }
   } else if (state.currentZone === 1) {
     drawShallowsBackground();
+    if (cv.starfish.active) drawClickStarfish(cv.starfish);
   } else if (state.currentZone === 2) {
     drawSandbankBackground();
+    if (cv.sandDollar.active) drawClickSandDollar(cv.sandDollar);
   } else if (state.currentZone === 3) {
     drawReefBackground();
   }
 
-  // Screen shake when hook is stuck
+  // Screen shake (unused, kept for future use)
   if (cv.screenShake.x !== 0 || cv.screenShake.y !== 0) {
     ctx.save();
     ctx.translate(cv.screenShake.x, cv.screenShake.y);
@@ -889,6 +1030,7 @@ function draw() {
   if (cv.inCanvas && !cv.hook && cv.cooldown <= 0) drawReticle(cv.mouseX, cv.mouseY);
   for (const f of cv.fish) drawFish(f);
   if (cv.hook) drawHook(cv.hook);
+  if (cv.extraHooks) for (const eh of cv.extraHooks) drawHook(eh);
 
   // Close screen shake transform
   if (cv.screenShake.x !== 0 || cv.screenShake.y !== 0) ctx.restore();
@@ -916,8 +1058,7 @@ function draw() {
     ctx.fillText('RELOADING...', canvasW / 2, by - 6);
   }
 
-  ctx.font = '10px "Space Mono"'; ctx.fillStyle = '#002612'; ctx.textAlign = 'left';
-  ctx.fillText(`CASTS: ${state.stats.totalCasts}   CAUGHT: ${state.stats.totalCaught}`, 10, 18);
+  // zone indicator removed from canvas — shown in HUD instead
 }
 
 function drawFish(f) {
@@ -934,7 +1075,8 @@ function drawFish(f) {
 function fishTransform(f) {
   const alpha = f.caught ? Math.max(0, 1 - f.catchAnim) : 1;
   const yOff  = f.caught ? -f.catchAnim * 36 : 0;
-  const sc    = f.caught ? 1 + f.catchAnim * 0.5 : 1;
+  const baseSc = f.sizeScale || 1;
+  const sc    = f.caught ? baseSc * (1 + f.catchAnim * 0.5) : baseSc;
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.translate(f.x, f.currentY + yOff);
@@ -997,10 +1139,11 @@ function drawEel(f) {
   const def = FISH[f.type], rc = RARITY_COLORS[def.rarity], sz = def.size;
   const alpha = f.caught ? Math.max(0, 1 - f.catchAnim) : 1;
   const yOff  = f.caught ? -f.catchAnim * 36 : 0;
+  const baseSc = f.sizeScale || 1;
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.translate(f.x, f.currentY + yOff);
-  if (f.dir === -1) ctx.scale(-1, 1);
+  ctx.scale(f.dir * baseSc, baseSc);
   ctx.shadowColor = rc.glow; ctx.shadowBlur = 10; ctx.strokeStyle = rc.color;
   ctx.lineWidth = sz * 0.32;
   ctx.lineCap = 'round';
@@ -1098,11 +1241,10 @@ function drawFlat(f) {
 }
 
 function drawHook(h) {
-  const stuck = h.state === 'stuck';
-  const hx = h.x + (h.shakeX || 0);
-  const hy = h.y + (h.shakeY || 0);
-  const col = stuck ? '#ff6600' : '#00ff88';
-  const lineCol = stuck ? 'rgba(255,100,0,0.35)' : 'rgba(0,255,136,0.25)';
+  const hx = h.x;
+  const hy = h.y;
+  const col = '#00ff88';
+  const lineCol = 'rgba(0,255,136,0.25)';
 
   ctx.save();
   ctx.strokeStyle = lineCol; ctx.lineWidth = 1;
@@ -1117,7 +1259,7 @@ function drawHook(h) {
   ctx.moveTo(hx, hy-s); ctx.lineTo(hx, hy+s);
   ctx.stroke();
   ctx.fillStyle = col;
-  ctx.beginPath(); ctx.arc(hx, hy, stuck ? 6 : 4, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(hx, hy, 4, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }
 
@@ -1311,6 +1453,51 @@ function drawStarfish(x, y, r, color) {
   ctx.restore();
 }
 
+function drawClickStarfish(obj) {
+  const alpha = Math.min(1, obj.peekAnim * 3);
+  if (alpha <= 0.01) return;
+  const x = obj.fx * canvasW;
+  const y = obj.fy * canvasH + (1 - obj.peekAnim) * 20;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#ff6644';
+  ctx.shadowColor = '#ff8866';
+  ctx.shadowBlur = 12;
+  ctx.translate(x, y);
+  ctx.rotate(Math.sin(currentT * 0.5) * 0.1);
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+    const b = a + Math.PI / 5;
+    ctx.lineTo(Math.cos(a) * 14, Math.sin(a) * 14);
+    ctx.lineTo(Math.cos(b) * 6, Math.sin(b) * 6);
+  }
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+function drawClickSandDollar(obj) {
+  const alpha = Math.min(1, obj.peekAnim * 3);
+  if (alpha <= 0.01) return;
+  const x = obj.fx * canvasW;
+  const y = obj.fy * canvasH + (1 - obj.peekAnim) * 15;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#997755';
+  ctx.shadowColor = '#bbaa88';
+  ctx.shadowBlur = 10;
+  ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#bbaa88'; ctx.lineWidth = 1;
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + Math.cos(a) * 10, y + Math.sin(a) * 10);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 // ─── Zone 1: The Shallows ───────────────────────────────────────
 function drawShallowsBackground() {
   const sandY = canvasH * 0.87;
@@ -1490,6 +1677,144 @@ function drawReefBackground() {
 function renderShop() {
   renderInventory();
   updateSellAllBtn();
+  renderFishmongerArt();
+  updatePassiveInfo();
+}
+
+function updatePassiveInfo() {
+  const el = document.getElementById('shop-passive-info');
+  if (state.upgrades.salvaged_net > 0) {
+    const n = state.upgrades.salvaged_net;
+    const rate = (n / 20).toFixed(1);
+    const highestZoneId = Math.max(...state.unlockedZones.filter(z => ZONES[z].implemented));
+    el.style.display = '';
+    el.textContent = `NET: ${rate} fish/s from ${ZONES[highestZoneId].name}`;
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function renderFishmongerArt() {
+  const container = document.getElementById('fishmonger-art');
+  if (!container) return;
+  container.innerHTML = '';
+  const shopRight = document.getElementById('shop-right');
+  const artH = Math.max(600, shopRight.clientHeight || 700);
+  const c = document.createElement('canvas');
+  c.width = 280; c.height = artH;
+  container.appendChild(c);
+  const x = c.getContext('2d');
+
+  // Background — dark shop interior
+  x.fillStyle = '#010a04';
+  x.fillRect(0, 0, 280, artH);
+
+  // Counter
+  x.fillStyle = '#0a1a0a';
+  x.fillRect(10, 280, 260, 50);
+  x.strokeStyle = '#00cc8844';
+  x.lineWidth = 1;
+  x.strokeRect(10, 280, 260, 50);
+
+  // Counter surface highlight
+  x.fillStyle = '#0e2a12';
+  x.fillRect(12, 282, 256, 4);
+
+  // Fishmonger body
+  x.fillStyle = '#061208';
+  x.fillRect(105, 160, 70, 120);
+
+  // Apron
+  x.fillStyle = '#0a2a10';
+  x.fillRect(110, 200, 60, 80);
+  x.strokeStyle = '#00885544';
+  x.strokeRect(110, 200, 60, 80);
+
+  // Head
+  x.fillStyle = '#0c1e0c';
+  x.beginPath();
+  x.arc(140, 145, 30, 0, Math.PI * 2);
+  x.fill();
+
+  // Eyes (glowing green)
+  x.fillStyle = '#00ff88';
+  x.shadowColor = '#00ff88';
+  x.shadowBlur = 8;
+  x.beginPath(); x.arc(130, 140, 3, 0, Math.PI * 2); x.fill();
+  x.beginPath(); x.arc(150, 140, 3, 0, Math.PI * 2); x.fill();
+  x.shadowBlur = 0;
+
+  // Hat / bandana
+  x.fillStyle = '#00886644';
+  x.fillRect(108, 118, 64, 12);
+
+  // Arms
+  x.fillStyle = '#061208';
+  x.fillRect(80, 200, 25, 70);
+  x.fillRect(175, 200, 25, 70);
+
+  // Hands on counter
+  x.fillStyle = '#0c1e0c';
+  x.beginPath(); x.arc(92, 274, 10, 0, Math.PI * 2); x.fill();
+  x.beginPath(); x.arc(188, 274, 10, 0, Math.PI * 2); x.fill();
+
+  // Fish on hooks behind (hanging)
+  const fishColors = ['#00cc66', '#88ccff', '#ff4466', '#cc44ff'];
+  const fishX = [50, 110, 170, 230];
+  for (let i = 0; i < 4; i++) {
+    const fy = 50 + Math.sin(i * 1.5) * 10;
+    // Hook line
+    x.strokeStyle = '#004422';
+    x.lineWidth = 1;
+    x.beginPath(); x.moveTo(fishX[i], 10); x.lineTo(fishX[i], fy); x.stroke();
+    // Hook
+    x.strokeStyle = '#00885544';
+    x.beginPath(); x.arc(fishX[i], fy + 4, 4, 0, Math.PI); x.stroke();
+    // Fish body
+    x.fillStyle = fishColors[i];
+    x.shadowColor = fishColors[i];
+    x.shadowBlur = 6;
+    x.beginPath();
+    x.ellipse(fishX[i], fy + 18, 14, 7, 0, 0, Math.PI * 2);
+    x.fill();
+    // Tail
+    x.beginPath();
+    x.moveTo(fishX[i] - 12, fy + 18);
+    x.lineTo(fishX[i] - 22, fy + 10);
+    x.lineTo(fishX[i] - 22, fy + 26);
+    x.closePath();
+    x.fill();
+    x.shadowBlur = 0;
+    // Eye
+    x.fillStyle = '#000';
+    x.beginPath(); x.arc(fishX[i] + 6, fy + 16, 2, 0, Math.PI * 2); x.fill();
+  }
+
+  // Shelves behind
+  x.strokeStyle = '#003a20';
+  x.lineWidth = 1;
+  x.beginPath(); x.moveTo(20, 90); x.lineTo(260, 90); x.stroke();
+
+  // Jars on shelf
+  x.fillStyle = '#001a0a';
+  for (const jx of [35, 80, 200, 240]) {
+    x.fillRect(jx - 8, 70, 16, 20);
+    x.strokeStyle = '#00cc6622';
+    x.strokeRect(jx - 8, 70, 16, 20);
+  }
+
+  // Floor
+  x.fillStyle = '#060e06';
+  x.fillRect(0, 330, 280, artH - 330);
+  x.strokeStyle = '#003a20';
+  x.lineWidth = 0.5;
+  for (let lx = 0; lx < 280; lx += 40) {
+    x.beginPath(); x.moveTo(lx, 330); x.lineTo(lx, artH); x.stroke();
+  }
+
+  // Accent glow on counter
+  x.fillStyle = 'rgba(0,204,221,0.06)';
+  x.fillRect(10, 278, 260, 4);
 }
 
 function renderInventory() {
@@ -1514,15 +1839,17 @@ function renderInventory() {
     card.className = `inv-card rarity-${rar}`;
     card.innerHTML = `
       <div class="inv-card-top">
-        <div class="inv-fish-name">${def.name}</div>
-        <div class="inv-rarity-tag">${def.rarity} · ${def.goldValue}◈ each</div>
+        <div class="inv-card-top-left">
+          <div class="inv-fish-name">${def.name}</div>
+          <div class="inv-rarity-tag">${def.rarity}</div>
+        </div>
+        <div class="inv-card-top-right">
+          <button class="sell-btn" data-type="${typeId}">SELL ALL</button>
+          <div class="inv-value">${def.goldValue}◈ each · = ${total}◈</div>
+        </div>
       </div>
       <div class="inv-card-bottom">
         <div class="inv-count">${count}</div>
-        <div class="inv-sell-col">
-          <div class="inv-value">= ${total}◈</div>
-          <button class="sell-btn" data-type="${typeId}">SELL ALL</button>
-        </div>
       </div>
     `;
     card.querySelector('.sell-btn').addEventListener('click', () => sellFish(typeId));
@@ -1546,62 +1873,91 @@ function updateSellAllBtn() {
 //  UPGRADES RENDERING
 // ═══════════════════════════════════════════════════════════════
 
+let activeUpgradeTab = 0;
+
+function renderUpgradeTabs() {
+  const tabsEl = document.getElementById('upgrades-tabs');
+  tabsEl.innerHTML = '';
+  const visibleCats = UPGRADE_CATEGORIES.filter(cat =>
+    cat.ids.some(id => {
+      const def = UPGRADES_DEF.find(u => u.id === id);
+      return def && state.totalGoldEarned >= def.revealAt;
+    })
+  );
+  if (!visibleCats.length) return;
+  if (activeUpgradeTab >= visibleCats.length) activeUpgradeTab = 0;
+
+  visibleCats.forEach((cat, i) => {
+    const btn = document.createElement('button');
+    btn.className = `upg-tab${i === activeUpgradeTab ? ' active' : ''}`;
+    btn.textContent = cat.name;
+    btn.addEventListener('click', () => { activeUpgradeTab = i; renderUpgrades(); });
+    tabsEl.appendChild(btn);
+  });
+}
+
 function renderUpgrades() {
+  renderUpgradeTabs();
   const el = document.getElementById('upgrades-grid');
   el.innerHTML = '';
-  let anyRendered = false;
 
-  for (const cat of UPGRADE_CATEGORIES) {
-    const defs = cat.ids
-      .map(id => UPGRADES_DEF.find(u => u.id === id))
-      .filter(def => def && state.totalGoldEarned >= def.revealAt);
+  const visibleCats = UPGRADE_CATEGORIES.filter(cat =>
+    cat.ids.some(id => {
+      const def = UPGRADES_DEF.find(u => u.id === id);
+      return def && state.totalGoldEarned >= def.revealAt;
+    })
+  );
 
-    if (!defs.length) continue;
-    anyRendered = true;
-
-    const catDiv = document.createElement('div');
-    catDiv.className = 'upg-category';
-
-    const header = document.createElement('div');
-    header.className = 'upg-category-header';
-    header.textContent = cat.name;
-    catDiv.appendChild(header);
-
-    const grid = document.createElement('div');
-    grid.className = 'upg-category-grid';
-
-    for (const def of defs) {
-      const owned  = state.upgrades[def.id];
-      const maxed  = owned >= def.max;
-      const cost   = upgradeCost(def.id);
-      const canBuy = !maxed && state.gold >= cost;
-
-      const card = document.createElement('div');
-      card.className = `upg-card${canBuy ? ' can-buy' : ''}${maxed ? ' maxed' : ''}`;
-      card.innerHTML = `
-        <div class="upg-card-top">
-          <div class="upg-name">${def.name}</div>
-          <div class="upg-desc">${def.desc}</div>
-        </div>
-        <div class="upg-card-bottom">
-          <div class="upg-level">${owned} / ${def.max} installed</div>
-          ${maxed
-            ? `<div class="upg-maxed-label">[ MAX ]</div>`
-            : `<button class="upg-btn" data-id="${def.id}" ${canBuy ? '' : 'disabled'}>${fmt(cost)}◈</button>`
-          }
-        </div>
-      `;
-      if (!maxed) card.querySelector('.upg-btn').addEventListener('click', () => buyUpgrade(def.id));
-      grid.appendChild(card);
-    }
-
-    catDiv.appendChild(grid);
-    el.appendChild(catDiv);
-  }
-
-  if (!anyRendered) {
+  if (!visibleCats.length) {
     el.innerHTML = '<div class="upg-empty">// NO UPGRADES AVAILABLE YET</div>';
+    return;
   }
+
+  const cat = visibleCats[activeUpgradeTab] || visibleCats[0];
+  const defs = cat.ids
+    .map(id => UPGRADES_DEF.find(u => u.id === id))
+    .filter(def => def && state.totalGoldEarned >= def.revealAt);
+
+  if (!defs.length) return;
+
+  const catDiv = document.createElement('div');
+  catDiv.className = 'upg-category';
+
+  const header = document.createElement('div');
+  header.className = 'upg-category-header';
+  header.textContent = cat.name;
+  catDiv.appendChild(header);
+
+  const grid = document.createElement('div');
+  grid.className = 'upg-category-grid';
+
+  for (const def of defs) {
+    const owned  = state.upgrades[def.id];
+    const maxed  = owned >= def.max;
+    const cost   = upgradeCost(def.id);
+    const canBuy = !maxed && state.gold >= cost;
+
+    const card = document.createElement('div');
+    card.className = `upg-card${canBuy ? ' can-buy' : ''}${maxed ? ' maxed' : ''}`;
+    card.innerHTML = `
+      <div class="upg-card-top">
+        <div class="upg-name">${def.name}</div>
+        <div class="upg-desc">${def.desc}</div>
+      </div>
+      <div class="upg-card-bottom">
+        <div class="upg-level">${owned} / ${def.max} installed</div>
+        ${maxed
+          ? `<div class="upg-maxed-label">[ MAX ]</div>`
+          : `<button class="upg-btn" data-id="${def.id}" ${canBuy ? '' : 'disabled'}>${fmt(cost)}◈</button>`
+        }
+      </div>
+    `;
+    if (!maxed) card.querySelector('.upg-btn').addEventListener('click', () => buyUpgrade(def.id));
+    grid.appendChild(card);
+  }
+
+  catDiv.appendChild(grid);
+  el.appendChild(catDiv);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1623,9 +1979,9 @@ function renderAtlas() {
 
     const fishBreak = (unlocked || isCur) ? `
       <div class="atlas-fish-breakdown">
-        <span class="fish-pct common">COMMON 50%</span>
+        <span class="fish-pct common">COMMON 40%</span>
         <span class="fish-pct uncommon">UNCOMMON 30%</span>
-        <span class="fish-pct rare">RARE 10%</span>
+        <span class="fish-pct rare">RARE 20%</span>
         <span class="fish-pct epic">EPIC 8%</span>
         <span class="fish-pct legendary">LEGENDARY 2%</span>
       </div>` : '';
@@ -1650,7 +2006,6 @@ function renderAtlas() {
         ${i < ZONES.length - 1 ? '<div class="atlas-connector-line"></div>' : ''}
       </div>
       <div class="atlas-node-right">
-        <div class="atlas-zone-tier">${zone.tier}</div>
         <div class="atlas-zone-id">${zone.code}</div>
         <div class="atlas-zone-name">${(unlocked || isCur) ? zone.name : '???'}</div>
         <div class="atlas-zone-depth">~${zone.depth}m depth</div>
@@ -1674,8 +2029,9 @@ function renderAtlas() {
 
     const btn = nodeDiv.querySelector('.descend-btn');
     if (btn) {
+      const zId = parseInt(btn.dataset.zone);
+      if (zId === 1 && canBuy) btn.classList.add('pulse-first');
       btn.addEventListener('click', () => {
-        const zId = parseInt(btn.dataset.zone);
         if (state.unlockedZones.includes(zId)) travelToZone(zId);
         else purchaseZone(zId);
       });
@@ -1694,7 +2050,7 @@ function renderBoat() {
   const hasRodSpeed = state.upgrades.rod_speed > 0;
 
   if (!hasRodSpeed) {
-    el.innerHTML = '<div class="boat-empty">// NOTHING INSTALLED YET<br><br>Purchase OVERCLOCKED DRIVE from Upgrades<br>to unlock rod speed tuning.</div>';
+    el.innerHTML = '<div class="boat-empty">// NOTHING INSTALLED YET<br><br>Purchase FASTER CAST from Upgrades<br>to unlock cast speed tuning.</div>';
     return;
   }
 
@@ -1704,30 +2060,30 @@ function renderBoat() {
   el.appendChild(header);
 
   if (hasRodSpeed) {
-    const maxSpeed = 450 + state.upgrades.rod_speed * 80;
-    const minSpeed = 150;
-    const curSpeed = Math.round(maxSpeed * state.boatSettings.rodSpeedFactor);
+    const maxPct = 100 + state.upgrades.rod_speed * 20;
+    const minPct = Math.round((150 / (450 * (1 + state.upgrades.rod_speed * 0.20))) * 100);
+    const curPct = Math.round(state.boatSettings.rodSpeedFactor * 100);
 
     const setting = document.createElement('div');
     setting.className = 'boat-setting';
     setting.innerHTML = `
       <div class="boat-setting-label">CAST SPEED</div>
-      <div class="boat-setting-desc">Adjust your rod's cast speed. Lower speeds give more control. Max speed scales with OVERCLOCKED DRIVE level (currently ${maxSpeed}px/s).</div>
+      <div class="boat-setting-desc">Adjust your rod's cast speed. Lower speeds give more control. Max speed scales with FASTER CAST level (currently ${maxPct}%).</div>
       <div class="boat-slider-row">
         <input type="range" class="boat-slider" id="slider-rod-speed"
-          min="${minSpeed}" max="${maxSpeed}" step="10" value="${curSpeed}">
-        <span class="boat-slider-val" id="rod-speed-val">${curSpeed}px/s</span>
+          min="${minPct}" max="100" step="1" value="${curPct}">
+        <span class="boat-slider-val" id="rod-speed-val">${curPct}%</span>
       </div>
       <div class="boat-slider-labels">
-        <span>SLOW (${minSpeed})</span><span>FAST (${maxSpeed})</span>
+        <span>SLOW (${minPct}%)</span><span>FAST (100%)</span>
       </div>
     `;
     el.appendChild(setting);
 
     setting.querySelector('#slider-rod-speed').addEventListener('input', (e) => {
       const v = parseInt(e.target.value);
-      state.boatSettings.rodSpeedFactor = v / maxSpeed;
-      setting.querySelector('#rod-speed-val').textContent = `${v}px/s`;
+      state.boatSettings.rodSpeedFactor = v / 100;
+      setting.querySelector('#rod-speed-val').textContent = `${v}%`;
     });
   }
 }
@@ -1755,7 +2111,7 @@ function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>
 
 function exportSave() {
   return btoa(JSON.stringify({
-    v: 5,
+    v: 6,
     gold: Math.floor(state.gold),
     totalGoldEarned: Math.floor(state.totalGoldEarned),
     currentZone: state.currentZone,
@@ -1765,6 +2121,7 @@ function exportSave() {
     stats: state.stats,
     passiveTimer: state.passiveTimer,
     baitCooldown: state.baitCooldown,
+    multiCastCooldown: state.multiCastCooldown,
     boatSettings: state.boatSettings,
     flags: state.flags,
   }));
@@ -1773,7 +2130,7 @@ function exportSave() {
 function importSave(code) {
   try {
     const d = JSON.parse(atob(code.trim()));
-    if (d.v !== 5) throw new Error('version mismatch');
+    if (d.v !== 6 && d.v !== 5) throw new Error('version mismatch');
     state.gold            = d.gold || 0;
     state.totalGoldEarned = d.totalGoldEarned || 0;
     state.currentZone     = d.currentZone || 0;
@@ -1783,6 +2140,7 @@ function importSave(code) {
     state.stats           = { ...state.stats, ...d.stats };
     state.passiveTimer    = d.passiveTimer || 0;
     state.baitCooldown    = d.baitCooldown || 0;
+    state.multiCastCooldown = d.multiCastCooldown || 0;
     state.boatSettings    = { ...state.boatSettings, ...(d.boatSettings || {}) };
     state.flags           = { ...state.flags, ...d.flags };
     cv.fish = []; cv.hook = null; cv.cooldown = 0;
@@ -1807,7 +2165,11 @@ function applyFlagsToDOM() {
   if (f.saveUnlocked)     document.getElementById('fishing-save-btns').classList.add('visible');
   if (f.baitVisible) {
     const b = document.getElementById('btn-bait');
-    b.style.display = 'block';
+    b.style.display = 'flex';
+  }
+  if (f.multiCastVisible) {
+    const mc = document.getElementById('btn-multicast');
+    mc.style.display = 'flex';
   }
   if (state.stats.totalCaught >= 1) document.getElementById('fishing-gold').classList.add('visible');
 }
@@ -1822,13 +2184,14 @@ document.getElementById('btn-atlas').addEventListener('click',    () => switchSc
 document.getElementById('btn-log').addEventListener('click',      () => switchScreen('screen-log'));
 document.getElementById('btn-boat').addEventListener('click',     () => switchScreen('screen-boat'));
 
-document.getElementById('btn-back-shop').addEventListener('click',     () => switchScreen('screen-fishing'));
+document.getElementById('btn-back-shop').addEventListener('click',     () => { document.getElementById('btn-back-shop').classList.remove('pulse-hint'); switchScreen('screen-fishing'); });
 document.getElementById('btn-back-upgrades').addEventListener('click', () => switchScreen('screen-fishing'));
 document.getElementById('btn-back-atlas').addEventListener('click',    () => switchScreen('screen-fishing'));
 document.getElementById('btn-back-log').addEventListener('click',      () => switchScreen('screen-fishing'));
 document.getElementById('btn-back-boat').addEventListener('click',     () => switchScreen('screen-fishing'));
 
-document.getElementById('btn-bait').addEventListener('click', useBait);
+document.getElementById('btn-bait').addEventListener('click', () => { document.getElementById('btn-bait').classList.remove('pulse-new'); useBait(); });
+document.getElementById('btn-multicast').addEventListener('click', () => { document.getElementById('btn-multicast').classList.remove('pulse-new'); useMultiCast(); });
 
 document.getElementById('btn-sell-all').addEventListener('click', sellAll);
 
@@ -1867,24 +2230,13 @@ canvas.addEventListener('click', (e) => {
   const cx = (e.clientX - rect.left) * (canvasW / rect.width);
   const cy = (e.clientY - rect.top)  * (canvasH / rect.height);
 
-  // Stuck hook — each click frees it a bit
-  if (cv.hook && cv.hook.state === 'stuck') {
-    cv.hook.stuckClicks++;
-    cv.hook.shakeIntensity = 16;
-    if (cv.hook.stuckClicks >= cv.hook.stuckThreshold) {
-      cv.hook.state = 'retracting';
-      cv.hook.shakeX = 0; cv.hook.shakeY = 0;
-      cv.screenShake.x = 0; cv.screenShake.y = 0;
-    }
-    return;
-  }
-
-  if (state.currentZone === 0 && clickCrab(cx, cy)) return;
+  if (clickZoneSpecial(cx, cy)) return;
   castHook(cx, cy);
 });
 canvas.addEventListener('contextmenu', (e) => {
   e.preventDefault();
   if (state.upgrades.instant_retract >= 1 && cv.hook && cv.hook.state !== 'retracting') {
+    cv.hook.quickRetract = true;
     cv.hook.state = 'retracting';
   }
 });
