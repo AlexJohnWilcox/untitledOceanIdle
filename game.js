@@ -230,6 +230,13 @@ const UPGRADE_CATEGORIES = [
   { name: 'TARGETING',    ids: ['targeting_scope'] },
   { name: 'AUTOMATION',   ids: ['salvaged_net', 'sell_batch', 'fish_density'] },
   { name: 'ABILITIES',    ids: ['bait_bomb', 'bait_cooldown', 'bait_strength', 'multi_cast', 'multi_cooldown', 'multi_duration'] },
+  { name: 'CONSUMABLES',  ids: [], special: 'consumables' },
+];
+
+const CONSUMABLES_DEF = [
+  { id: 'small_net', name: 'SMALL NET',  desc: 'Throw a net that captures all fish in a small area. Click to activate, then click on the water.',  cost: 120, netRadius: 90  },
+  { id: 'big_net',   name: 'BIG NET',    desc: 'A larger net. Captures all fish in a wide area. Click to activate, then click on the water.',       cost: 320, netRadius: 180 },
+  { id: 'worm',      name: 'WORM',       desc: 'Your next cast draws fish toward your hook from a large radius. They swim to it — catch them yourself.', cost: 75 },
 ];
 
 const UPGRADES_DEF = [
@@ -269,6 +276,8 @@ let state = {
     bait_bomb: 0, bait_cooldown: 0, bait_strength: 0,
     multi_cast: 0, multi_cooldown: 0, multi_duration: 0,
   },
+  consumables: { small_net: 0, big_net: 0, worm: 0 },
+  activeConsumable: null,
   stats: { totalCaught: 0, totalCasts: 0 },
   passiveTimer: 0,
   baitTimer: 0,
@@ -277,19 +286,20 @@ let state = {
   multiCastCooldown: 0,
   boatSettings: { rodSpeedFactor: 1.0 },
   flags: {
-    shopUnlocked:     false,
-    logUnlocked:      false,
-    upgradesUnlocked: false,
-    atlasUnlocked:    false,
-    boatUnlocked:     false,
-    upgradesVisited:  false,
-    atlasVisited:     false,
-    logVisited:       false,
-    shopVisited:      false,
-    boatVisited:      false,
-    saveUnlocked:     false,
-    baitVisible:      false,
-    multiCastVisible: false,
+    shopUnlocked:       false,
+    logUnlocked:        false,
+    upgradesUnlocked:   false,
+    atlasUnlocked:      false,
+    boatUnlocked:       false,
+    upgradesVisited:    false,
+    atlasVisited:       false,
+    logVisited:         false,
+    shopVisited:        false,
+    boatVisited:        false,
+    saveUnlocked:       false,
+    baitVisible:        false,
+    multiCastVisible:   false,
+    consumablesSidebar: false,
   },
 };
 
@@ -335,6 +345,9 @@ const cv = {
   starfish: { active: false, fx: 0, fy: 0, peekAnim: 0, peekDir: 0, lingerTimer: 0, spawnTimer: 50 },
   sandDollar: { active: false, fx: 0, fy: 0, peekAnim: 0, peekDir: 0, lingerTimer: 0, spawnTimer: 55 },
   screenShake: { x: 0, y: 0 },
+  nets: [],
+  ships: [], shipTimer: 15,
+  wormExpiry: 0,
 };
 
 function resizeCanvas() {
@@ -345,13 +358,32 @@ function resizeCanvas() {
   canvas.height = canvasH;
 }
 
+// ─── Fish bleedthrough: rarer fish from previous zone bleed into deeper zones ───
+const BLEED_MULTIPLIERS = { COMMON: 0.03, UNCOMMON: 0.10, RARE: 0.40, EPIC: 1.5, LEGENDARY: 4.0 };
+
+function getSpawnPool(zoneId) {
+  const zone = ZONES[zoneId];
+  const fish = [...zone.fish];
+  const weights = [...zone.spawnWeights];
+  if (zoneId > 0) {
+    const prev = ZONES[zoneId - 1];
+    for (let i = 0; i < prev.fish.length; i++) {
+      const fishId = prev.fish[i];
+      const bleed = prev.spawnWeights[i] * BLEED_MULTIPLIERS[FISH[fishId].rarity];
+      if (bleed >= 0.5) { fish.push(fishId); weights.push(bleed); }
+    }
+  }
+  return { fish, weights };
+}
+
 function spawnFish() {
   const zone    = ZONES[state.currentZone];
   if (!zone.implemented) return;
-  const weights = zone.spawnWeights;
+  const pool    = getSpawnPool(state.currentZone);
+  const weights = pool.weights;
   const total   = weights.reduce((a, b) => a + b, 0);
-  let r = Math.random() * total, typeId = zone.fish[0];
-  for (let i = 0; i < zone.fish.length; i++) { r -= weights[i]; if (r <= 0) { typeId = zone.fish[i]; break; } }
+  let r = Math.random() * total, typeId = pool.fish[0];
+  for (let i = 0; i < pool.fish.length; i++) { r -= weights[i]; if (r <= 0) { typeId = pool.fish[i]; break; } }
 
   const dir   = Math.random() < 0.5 ? 1 : -1;
   const baseY = canvasH * 0.1 + Math.random() * canvasH * 0.76;
@@ -376,6 +408,24 @@ function spawnBubble() {
   });
 }
 
+function throwNet(cx, cy, typeId) {
+  const def = CONSUMABLES_DEF.find(c => c.id === typeId);
+  if (!def || (state.consumables[typeId] || 0) <= 0) return;
+  state.consumables[typeId]--;
+  state.activeConsumable = null;
+  const radius = def.netRadius;
+  cv.nets.push({ x: cx, y: cy, radius, timer: 1.4, maxTimer: 1.4 });
+  let caught = 0;
+  for (const f of cv.fish) {
+    if (f.caught) continue;
+    const dx = cx - f.x, dy = cy - f.currentY;
+    if (Math.sqrt(dx*dx + dy*dy) < radius) { catchFish(f.id, f.type); caught++; }
+  }
+  addLog(`> NET THROWN: caught ${caught} fish.`);
+  audio.play('catch_rare');
+  renderConsumablesPanel();
+}
+
 function castHook(tx, ty) {
   if (cv.cooldown > 0 || cv.hook) return;
   cv.hook = {
@@ -385,6 +435,21 @@ function castHook(tx, ty) {
   };
   state.stats.totalCasts++;
   audio.play('cast');
+
+  // Worm: attract fish to cast point
+  if (state.activeConsumable === 'worm' && (state.consumables.worm || 0) > 0) {
+    state.consumables.worm--;
+    state.activeConsumable = null;
+    cv.wormExpiry = currentT + 15;
+    const wormRadius = 210;
+    for (const f of cv.fish) {
+      if (f.caught) continue;
+      const dx = tx - f.x, dy = ty - f.currentY;
+      if (Math.sqrt(dx*dx + dy*dy) < wormRadius) f.attractedTo = { x: tx, y: ty };
+    }
+    addLog('> WORM DEPLOYED. Something stirs in the water...');
+    renderConsumablesPanel();
+  }
 
   // Multi-cast: fire two extra hooks with offset
   if (state.multiCastTimer > 0) {
@@ -736,12 +801,55 @@ function update(dt, t) {
       continue;
     }
     const def = FISH[f.type];
-    f.x += def.speed * f.dir * dt;
-    f.currentY = def.wave
-      ? f.baseY + Math.sin(t * def.wave.freq + f.waveOffset) * def.wave.amp
-      : f.baseY;
+    if (f.attractedTo) {
+      const dx = f.attractedTo.x - f.x, dy = f.attractedTo.y - f.currentY;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist > 8) {
+        const spd = def.speed * 1.6 * dt;
+        f.x += (dx/dist) * spd;
+        f.currentY += (dy/dist) * spd * 0.6;
+        f.baseY = f.currentY;
+        f.dir = dx >= 0 ? 1 : -1;
+      }
+    } else {
+      f.x += def.speed * f.dir * dt;
+      f.currentY = def.wave
+        ? f.baseY + Math.sin(t * def.wave.freq + f.waveOffset) * def.wave.amp
+        : f.baseY;
+    }
     f.currentY = Math.max(36, Math.min(canvasH - 44, f.currentY));
     if ((f.dir === 1 && f.x > canvasW + 90) || (f.dir === -1 && f.x < -90)) cv.fish.splice(i, 1);
+  }
+
+  // Worm expiry
+  if (cv.wormExpiry > 0 && t > cv.wormExpiry) {
+    cv.wormExpiry = 0;
+    cv.fish.forEach(f => { delete f.attractedTo; });
+  }
+
+  // Nets
+  for (let i = cv.nets.length - 1; i >= 0; i--) {
+    cv.nets[i].timer -= dt;
+    if (cv.nets[i].timer <= 0) cv.nets.splice(i, 1);
+  }
+
+  // Ships (coast only)
+  if (state.currentZone === 0) {
+    cv.shipTimer -= dt;
+    if (cv.shipTimer <= 0) {
+      cv.shipTimer = 22 + Math.random() * 35;
+      const dir = Math.random() < 0.5 ? 1 : -1;
+      cv.ships.push({
+        x: dir === 1 ? -200 : canvasW + 200,
+        y: canvasH * 0.025 + Math.random() * canvasH * 0.025,
+        dir, speed: 22 + Math.random() * 18,
+        size: 0.7 + Math.random() * 0.5,
+      });
+    }
+    for (let i = cv.ships.length - 1; i >= 0; i--) {
+      cv.ships[i].x += cv.ships[i].dir * cv.ships[i].speed * dt;
+      if (cv.ships[i].x > canvasW + 300 || cv.ships[i].x < -300) cv.ships.splice(i, 1);
+    }
   }
 
   cv.spawnTimer -= dt;
@@ -788,7 +896,10 @@ function update(dt, t) {
       const dist = Math.sqrt(dx * dx + dy * dy);
       const retractMult = h.quickRetract ? (1 + (Math.max(0, state.upgrades.instant_retract - 1) * 0.40)) : 1;
       const step = Math.max(SPEED, 600) * retractMult * dt;
-      if (step >= dist) { cv.hook = null; cv.cooldown = getRecastCooldown(); }
+      if (step >= dist) {
+        cv.hook = null; cv.cooldown = getRecastCooldown();
+        cv.fish.forEach(f => { delete f.attractedTo; }); cv.wormExpiry = 0;
+      }
       else { h.x += (dx / dist) * step; h.y += (dy / dist) * step; }
       checkHookCollision(h.x, h.y); // ← catch on retract
     }
@@ -980,21 +1091,27 @@ function clickSpecial(obj, typeId, cx, cy) {
 function draw() {
   ctx.clearRect(0, 0, canvasW, canvasH);
 
+  const skyH = canvasH * 0.08;
   if (state.currentZone === 0) {
-    const bg = ctx.createLinearGradient(0, 0, 0, canvasH);
-    bg.addColorStop(0, '#005540'); bg.addColorStop(0.5, '#003322'); bg.addColorStop(1, '#001a10');
-    ctx.fillStyle = bg; ctx.fillRect(0, 0, canvasW, canvasH);
-    ctx.strokeStyle = '#004433'; ctx.lineWidth = 0.5;
+    // Sky strip
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, skyH);
+    skyGrad.addColorStop(0, '#001122'); skyGrad.addColorStop(1, '#003333');
+    ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, canvasW, skyH);
+    // Water
+    const bg = ctx.createLinearGradient(0, skyH, 0, canvasH);
+    bg.addColorStop(0, '#009966'); bg.addColorStop(0.4, '#006644'); bg.addColorStop(1, '#002e1a');
+    ctx.fillStyle = bg; ctx.fillRect(0, skyH, canvasW, canvasH - skyH);
+    ctx.strokeStyle = '#006644'; ctx.lineWidth = 0.5;
   } else if (state.currentZone <= 2) {
     const bg = ctx.createLinearGradient(0, 0, 0, canvasH);
-    bg.addColorStop(0, '#003020'); bg.addColorStop(0.5, '#001e12'); bg.addColorStop(1, '#001008');
+    bg.addColorStop(0, '#006644'); bg.addColorStop(0.5, '#004433'); bg.addColorStop(1, '#001e10');
     ctx.fillStyle = bg; ctx.fillRect(0, 0, canvasW, canvasH);
-    ctx.strokeStyle = '#002a14'; ctx.lineWidth = 0.5;
+    ctx.strokeStyle = '#004422'; ctx.lineWidth = 0.5;
   } else {
     const bg = ctx.createLinearGradient(0, 0, 0, canvasH);
-    bg.addColorStop(0, '#001508'); bg.addColorStop(0.5, '#000e05'); bg.addColorStop(1, '#000802');
+    bg.addColorStop(0, '#003322'); bg.addColorStop(0.5, '#001e10'); bg.addColorStop(1, '#000e05');
     ctx.fillStyle = bg; ctx.fillRect(0, 0, canvasW, canvasH);
-    ctx.strokeStyle = '#001a09'; ctx.lineWidth = 0.5;
+    ctx.strokeStyle = '#002214'; ctx.lineWidth = 0.5;
   }
   for (let x = 50; x < canvasW; x += 50) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvasH); ctx.stroke(); }
   for (let y = 50; y < canvasH; y += 50) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvasW,y); ctx.stroke(); }
@@ -1002,6 +1119,8 @@ function draw() {
   // Zone-specific decorations
   if (state.currentZone === 0) {
     drawCoastBackground();
+    drawWaterSurface(skyH);
+    for (const ship of cv.ships) drawShip(ship);
     if (cv.crab.active) {
       const rock = COAST_ROCKS[cv.crab.rockIdx];
       drawCrab(rock.fx * canvasW, canvasH * rock.fy - 18, cv.crab.peekAnim);
@@ -1031,6 +1150,7 @@ function draw() {
   for (const f of cv.fish) drawFish(f);
   if (cv.hook) drawHook(cv.hook);
   if (cv.extraHooks) for (const eh of cv.extraHooks) drawHook(eh);
+  for (const net of cv.nets) drawNet(net);
 
   // Close screen shake transform
   if (cv.screenShake.x !== 0 || cv.screenShake.y !== 0) ctx.restore();
@@ -1265,17 +1385,38 @@ function drawHook(h) {
 
 function drawReticle(mx, my) {
   ctx.save();
-  ctx.strokeStyle = 'rgba(0,255,136,0.16)'; ctx.lineWidth = 1;
+  const ac = state.activeConsumable;
+  const netDef = ac && (ac === 'small_net' || ac === 'big_net') ? CONSUMABLES_DEF.find(c => c.id === ac) : null;
+  const isWorm = ac === 'worm';
+
+  if (netDef) {
+    // Net mode: show net radius circle
+    ctx.strokeStyle = 'rgba(68,255,170,0.5)'; ctx.lineWidth = 1.5;
+    ctx.shadowColor = '#44ffaa'; ctx.shadowBlur = 12;
+    ctx.setLineDash([6, 5]);
+    ctx.beginPath(); ctx.arc(mx, my, netDef.netRadius, 0, Math.PI*2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath(); ctx.arc(mx, my, 10, 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+    return;
+  }
+
+  ctx.strokeStyle = isWorm ? 'rgba(255,200,50,0.18)' : 'rgba(0,255,136,0.16)'; ctx.lineWidth = 1;
   ctx.setLineDash([5, 9]);
   ctx.beginPath(); ctx.moveTo(canvasW/2, canvasH); ctx.lineTo(mx, my); ctx.stroke();
   ctx.setLineDash([]);
-  ctx.strokeStyle = 'rgba(0,255,136,0.07)'; ctx.lineWidth = 1;
+  ctx.strokeStyle = isWorm ? 'rgba(255,200,50,0.1)' : 'rgba(0,255,136,0.07)'; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.arc(mx, my, getCatchRadius(), 0, Math.PI*2); ctx.stroke();
-  ctx.shadowColor = '#00ff88'; ctx.shadowBlur = 10;
-  ctx.strokeStyle = 'rgba(0,255,136,0.58)'; ctx.lineWidth = 1.2;
+  if (isWorm) {
+    ctx.strokeStyle = 'rgba(255,200,50,0.2)'; ctx.lineWidth = 1; ctx.setLineDash([4, 6]);
+    ctx.beginPath(); ctx.arc(mx, my, 210, 0, Math.PI*2); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.shadowColor = isWorm ? '#ffcc44' : '#00ff88'; ctx.shadowBlur = 10;
+  ctx.strokeStyle = isWorm ? 'rgba(255,200,50,0.7)' : 'rgba(0,255,136,0.58)'; ctx.lineWidth = 1.2;
   ctx.beginPath(); ctx.arc(mx, my, 13, 0, Math.PI*2); ctx.stroke();
   const r=13, g=7;
-  ctx.strokeStyle = 'rgba(0,255,136,0.4)'; ctx.lineWidth = 1;
+  ctx.strokeStyle = isWorm ? 'rgba(255,200,50,0.5)' : 'rgba(0,255,136,0.4)'; ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(mx-r-g,my); ctx.lineTo(mx+r+g,my);
   ctx.moveTo(mx,my-r-g); ctx.lineTo(mx,my+r+g);
@@ -1495,6 +1636,69 @@ function drawClickSandDollar(obj) {
     ctx.lineTo(x + Math.cos(a) * 10, y + Math.sin(a) * 10);
     ctx.stroke();
   }
+  ctx.restore();
+}
+
+function drawWaterSurface(y) {
+  const t = currentT;
+  ctx.save();
+  ctx.shadowColor = '#44ffbb'; ctx.shadowBlur = 8;
+  ctx.strokeStyle = 'rgba(80,255,180,0.5)'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let x = 0; x <= canvasW; x += 4) {
+    const wy = y + Math.sin(x * 0.025 + t * 1.1) * 3 + Math.sin(x * 0.06 + t * 0.7) * 1.5;
+    x === 0 ? ctx.moveTo(x, wy) : ctx.lineTo(x, wy);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(80,255,180,0.18)'; ctx.lineWidth = 1; ctx.shadowBlur = 0;
+  ctx.beginPath();
+  for (let x = 0; x <= canvasW; x += 4) {
+    const wy = y + 7 + Math.sin(x * 0.04 + t * 0.85 + 1.5) * 2;
+    x === 0 ? ctx.moveTo(x, wy) : ctx.lineTo(x, wy);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawShip(ship) {
+  ctx.save();
+  ctx.translate(ship.x, ship.y);
+  ctx.scale(ship.dir * ship.size, ship.size);
+  ctx.fillStyle = 'rgba(0,15,8,0.85)';
+  ctx.shadowColor = '#002211'; ctx.shadowBlur = 6;
+  // Hull
+  ctx.beginPath();
+  ctx.moveTo(-55, 0); ctx.lineTo(-48, 12); ctx.lineTo(55, 12); ctx.lineTo(62, 0); ctx.closePath(); ctx.fill();
+  // Superstructure
+  ctx.fillRect(-18, -18, 38, 18);
+  // Mast
+  ctx.fillStyle = 'rgba(0,20,10,0.95)';
+  ctx.fillRect(-1, -46, 3, 28);
+  // Small cabin top
+  ctx.fillStyle = 'rgba(0,15,8,0.85)';
+  ctx.fillRect(-8, -30, 18, 12);
+  ctx.restore();
+}
+
+function drawNet(net) {
+  const progress = 1 - net.timer / net.maxTimer;
+  const r = net.radius * (0.25 + progress * 0.75);
+  const alpha = (net.timer / net.maxTimer) * 0.8;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = '#44ffaa'; ctx.shadowColor = '#44ffaa'; ctx.shadowBlur = 16;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(net.x, net.y, r, 0, Math.PI * 2); ctx.stroke();
+  // Radial grid lines
+  ctx.lineWidth = 0.8; ctx.shadowBlur = 6;
+  for (let a = 0; a < Math.PI * 2; a += Math.PI / 5) {
+    ctx.beginPath();
+    ctx.moveTo(net.x, net.y);
+    ctx.lineTo(net.x + Math.cos(a) * r, net.y + Math.sin(a) * r);
+    ctx.stroke();
+  }
+  // Inner ring
+  ctx.beginPath(); ctx.arc(net.x, net.y, r * 0.5, 0, Math.PI * 2); ctx.stroke();
   ctx.restore();
 }
 
@@ -1870,6 +2074,62 @@ function updateSellAllBtn() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  CONSUMABLES SIDEBAR
+// ═══════════════════════════════════════════════════════════════
+
+function buyConsumable(id) {
+  const def = CONSUMABLES_DEF.find(c => c.id === id);
+  if (!def || state.gold < def.cost) return;
+  state.gold -= def.cost;
+  state.consumables[id] = (state.consumables[id] || 0) + 1;
+  state.totalGoldEarned += def.cost;
+  addLog(`> PURCHASED: ${def.name} [×${state.consumables[id]}]`);
+  audio.play('upgrade');
+  updateAllGoldDisplays();
+  renderUpgrades();
+  renderConsumablesPanel();
+  if (!state.flags.consumablesSidebar) {
+    state.flags.consumablesSidebar = true;
+    const sidebar = document.getElementById('consumables-sidebar');
+    if (sidebar) {
+      sidebar.classList.add('visible');
+      sidebar.classList.add('open');
+      document.getElementById('consumables-toggle').textContent = '◀';
+    }
+  }
+}
+
+function renderConsumablesPanel() {
+  const panel = document.getElementById('consumables-panel');
+  if (!panel) return;
+  panel.innerHTML = '';
+  let anyOwned = false;
+  for (const def of CONSUMABLES_DEF) {
+    const owned = state.consumables[def.id] || 0;
+    if (owned <= 0) continue;
+    anyOwned = true;
+    const isActive = state.activeConsumable === def.id;
+    const item = document.createElement('div');
+    item.className = `consumable-item${isActive ? ' active' : ''}`;
+    item.innerHTML = `
+      <div class="consumable-item-top">
+        <span class="consumable-name">${def.name}</span>
+        <span class="consumable-count">×${owned}</span>
+      </div>
+      <button class="consumable-use-btn${isActive ? ' active' : ''}" data-id="${def.id}">${isActive ? '[ CANCEL ]' : '[ USE ]'}</button>
+    `;
+    item.querySelector('.consumable-use-btn').addEventListener('click', () => {
+      state.activeConsumable = (state.activeConsumable === def.id) ? null : def.id;
+      renderConsumablesPanel();
+    });
+    panel.appendChild(item);
+  }
+  if (!anyOwned) {
+    panel.innerHTML = '<div class="consumable-empty">// NONE OWNED<br><small>Buy from Upgrades</small></div>';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  UPGRADES RENDERING
 // ═══════════════════════════════════════════════════════════════
 
@@ -1878,12 +2138,13 @@ let activeUpgradeTab = 0;
 function renderUpgradeTabs() {
   const tabsEl = document.getElementById('upgrades-tabs');
   tabsEl.innerHTML = '';
-  const visibleCats = UPGRADE_CATEGORIES.filter(cat =>
-    cat.ids.some(id => {
+  const visibleCats = UPGRADE_CATEGORIES.filter(cat => {
+    if (cat.special === 'consumables') return true;
+    return cat.ids.some(id => {
       const def = UPGRADES_DEF.find(u => u.id === id);
       return def && state.totalGoldEarned >= def.revealAt;
-    })
-  );
+    });
+  });
   if (!visibleCats.length) return;
   if (activeUpgradeTab >= visibleCats.length) activeUpgradeTab = 0;
 
@@ -1901,12 +2162,13 @@ function renderUpgrades() {
   const el = document.getElementById('upgrades-grid');
   el.innerHTML = '';
 
-  const visibleCats = UPGRADE_CATEGORIES.filter(cat =>
-    cat.ids.some(id => {
+  const visibleCats = UPGRADE_CATEGORIES.filter(cat => {
+    if (cat.special === 'consumables') return true;
+    return cat.ids.some(id => {
       const def = UPGRADES_DEF.find(u => u.id === id);
       return def && state.totalGoldEarned >= def.revealAt;
-    })
-  );
+    });
+  });
 
   if (!visibleCats.length) {
     el.innerHTML = '<div class="upg-empty">// NO UPGRADES AVAILABLE YET</div>';
@@ -1914,6 +2176,40 @@ function renderUpgrades() {
   }
 
   const cat = visibleCats[activeUpgradeTab] || visibleCats[0];
+
+  // Consumables tab has special rendering
+  if (cat.special === 'consumables') {
+    const catDiv = document.createElement('div');
+    catDiv.className = 'upg-category';
+    const header = document.createElement('div');
+    header.className = 'upg-category-header';
+    header.textContent = 'CONSUMABLES — single-use items';
+    catDiv.appendChild(header);
+    const grid = document.createElement('div');
+    grid.className = 'upg-category-grid';
+    for (const def of CONSUMABLES_DEF) {
+      const owned = state.consumables[def.id] || 0;
+      const canBuy = state.gold >= def.cost;
+      const card = document.createElement('div');
+      card.className = `upg-card${canBuy ? ' can-buy' : ''}`;
+      card.innerHTML = `
+        <div class="upg-card-top">
+          <div class="upg-name">${def.name}</div>
+          <div class="upg-desc">${def.desc}</div>
+        </div>
+        <div class="upg-card-bottom">
+          <div class="upg-level">owned: ${owned}</div>
+          <button class="upg-btn" data-id="${def.id}" ${canBuy ? '' : 'disabled'}>${fmt(def.cost)}◈ each</button>
+        </div>
+      `;
+      card.querySelector('.upg-btn').addEventListener('click', () => buyConsumable(def.id));
+      grid.appendChild(card);
+    }
+    catDiv.appendChild(grid);
+    el.appendChild(catDiv);
+    return;
+  }
+
   const defs = cat.ids
     .map(id => UPGRADES_DEF.find(u => u.id === id))
     .filter(def => def && state.totalGoldEarned >= def.revealAt);
@@ -1977,6 +2273,8 @@ function renderAtlas() {
     const nodeDiv = document.createElement('div');
     nodeDiv.className = `atlas-node ${isCur ? 'current' : unlocked ? 'visited' : 'locked'}`;
 
+    const nameRevealed = (unlocked || isCur) || (zone.unlockCost && state.gold >= zone.unlockCost * 0.8);
+
     const fishBreak = (unlocked || isCur) ? `
       <div class="atlas-fish-breakdown">
         <span class="fish-pct common">COMMON 40%</span>
@@ -2007,7 +2305,7 @@ function renderAtlas() {
       </div>
       <div class="atlas-node-right">
         <div class="atlas-zone-id">${zone.code}</div>
-        <div class="atlas-zone-name">${(unlocked || isCur) ? zone.name : '???'}</div>
+        <div class="atlas-zone-name${nameRevealed && !unlocked && !isCur ? ' atlas-name-preview' : ''}">${nameRevealed ? zone.name : '???'}</div>
         <div class="atlas-zone-depth">~${zone.depth}m depth</div>
         ${fishBreak}
         ${actionBlock}
@@ -2111,13 +2409,14 @@ function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>
 
 function exportSave() {
   return btoa(JSON.stringify({
-    v: 6,
+    v: 7,
     gold: Math.floor(state.gold),
     totalGoldEarned: Math.floor(state.totalGoldEarned),
     currentZone: state.currentZone,
     unlockedZones: state.unlockedZones,
     inventory: state.inventory,
     upgrades: state.upgrades,
+    consumables: state.consumables,
     stats: state.stats,
     passiveTimer: state.passiveTimer,
     baitCooldown: state.baitCooldown,
@@ -2130,13 +2429,14 @@ function exportSave() {
 function importSave(code) {
   try {
     const d = JSON.parse(atob(code.trim()));
-    if (d.v !== 6 && d.v !== 5) throw new Error('version mismatch');
+    if (![5,6,7].includes(d.v)) throw new Error('version mismatch');
     state.gold            = d.gold || 0;
     state.totalGoldEarned = d.totalGoldEarned || 0;
     state.currentZone     = d.currentZone || 0;
     state.unlockedZones   = d.unlockedZones || [0];
     state.inventory       = d.inventory || {};
     state.upgrades        = { ...state.upgrades, ...d.upgrades };
+    state.consumables     = { ...state.consumables, ...(d.consumables || {}) };
     state.stats           = { ...state.stats, ...d.stats };
     state.passiveTimer    = d.passiveTimer || 0;
     state.baitCooldown    = d.baitCooldown || 0;
@@ -2171,12 +2471,25 @@ function applyFlagsToDOM() {
     const mc = document.getElementById('btn-multicast');
     mc.style.display = 'flex';
   }
+  if (f.consumablesSidebar) {
+    const sidebar = document.getElementById('consumables-sidebar');
+    if (sidebar) sidebar.classList.add('visible');
+    // Don't auto-open on load — user can toggle
+  }
   if (state.stats.totalCaught >= 1) document.getElementById('fishing-gold').classList.add('visible');
+  renderConsumablesPanel();
 }
 
 // ═══════════════════════════════════════════════════════════════
 //  EVENT WIRING
 // ═══════════════════════════════════════════════════════════════
+
+document.getElementById('consumables-toggle').addEventListener('click', () => {
+  const sidebar = document.getElementById('consumables-sidebar');
+  const wasOpen = sidebar.classList.contains('open');
+  sidebar.classList.toggle('open');
+  document.getElementById('consumables-toggle').textContent = wasOpen ? '▶' : '◀';
+});
 
 document.getElementById('btn-shop').addEventListener('click',     () => switchScreen('screen-shop'));
 document.getElementById('btn-upgrades').addEventListener('click', () => switchScreen('screen-upgrades'));
@@ -2218,6 +2531,21 @@ document.getElementById('modal-import-btn').addEventListener('click',  () => {
   }
 });
 
+// ─── Dev mode ───
+let _devBuffer = '';
+document.addEventListener('keydown', (e) => {
+  if (e.key.length === 1) {
+    _devBuffer = (_devBuffer + e.key.toLowerCase()).slice(-7);
+    if (_devBuffer === 'ajmemes') {
+      state.gold += 100;
+      updateAllGoldDisplays();
+      addLog('> [DEV] +100◈ GRANTED. Someone left the keys in the boat.');
+      checkMilestones();
+      _devBuffer = '';
+    }
+  }
+});
+
 canvas.addEventListener('mousemove', (e) => {
   const rect = canvas.getBoundingClientRect();
   cv.mouseX = (e.clientX - rect.left) * (canvasW / rect.width);
@@ -2231,6 +2559,8 @@ canvas.addEventListener('click', (e) => {
   const cy = (e.clientY - rect.top)  * (canvasH / rect.height);
 
   if (clickZoneSpecial(cx, cy)) return;
+  const ac = state.activeConsumable;
+  if (ac === 'small_net' || ac === 'big_net') { throwNet(cx, cy, ac); return; }
   castHook(cx, cy);
 });
 canvas.addEventListener('contextmenu', (e) => {
