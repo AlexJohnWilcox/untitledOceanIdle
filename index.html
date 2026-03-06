@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UNTITLED OCEAN IDLE</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ══ SCREEN: FISHING ══ -->
+  <div id="screen-fishing" class="screen active">
+    <div id="fishing-hud">
+      <div id="fishing-hud-left">
+        <div id="fishing-save-btns">
+          <button class="save-tb-btn" id="btn-save">EXPORT</button>
+          <button class="save-tb-btn" id="btn-load">IMPORT</button>
+        </div>
+      </div>
+      <span id="fishing-title">UNTITLED OCEAN IDLE</span>
+      <div id="fishing-hud-right">
+        <button id="btn-bait" class="bait-btn" style="display:none">BAIT</button>
+        <span id="fishing-gold">◈ <strong id="gold-fishing">0</strong></span>
+      </div>
+    </div>
+
+    <div id="canvas-wrap">
+      <canvas id="game-canvas"></canvas>
+      <div id="zone-overlay">
+        <div id="zone-overlay-code">ZONE-00</div>
+        <div id="zone-overlay-name">THE COAST</div>
+      </div>
+    </div>
+
+    <div id="fishing-nav">
+      <button id="btn-shop"     class="bubble-btn" style="display:none">FISHMONGER'S REFUGE</button>
+      <button id="btn-log"      class="bubble-btn" style="display:none">TRANSMISSION LOG</button>
+      <button id="btn-upgrades" class="bubble-btn" style="display:none">UPGRADES</button>
+      <button id="btn-atlas"    class="bubble-btn" style="display:none">THE ATLAS</button>
+      <button id="btn-boat"     class="bubble-btn" style="display:none">THE BOAT</button>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN: FISHMONGER'S REFUGE ══ -->
+  <div id="screen-shop" class="screen">
+    <div class="screen-topbar">
+      <button class="back-btn" id="btn-back-shop">← RETURN TO WATER</button>
+      <span class="screen-title">FISHMONGER'S REFUGE</span>
+      <span class="gold-display">◈ <strong id="gold-shop">0</strong></span>
+    </div>
+    <div id="shop-content" class="screen-content">
+      <div id="inventory-grid"></div>
+      <button id="btn-sell-all" class="sell-all-btn" style="display:none">[ SELL ALL ]</button>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN: UPGRADES ══ -->
+  <div id="screen-upgrades" class="screen">
+    <div class="screen-topbar">
+      <button class="back-btn" id="btn-back-upgrades">← RETURN TO WATER</button>
+      <span class="screen-title">UPGRADES</span>
+      <span class="gold-display">◈ <strong id="gold-upgrades">0</strong></span>
+    </div>
+    <div id="upgrades-content" class="screen-content">
+      <div id="upgrades-grid"></div>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN: TRANSMISSION LOG ══ -->
+  <div id="screen-log" class="screen">
+    <div class="screen-topbar">
+      <button class="back-btn" id="btn-back-log">← RETURN TO WATER</button>
+      <span class="screen-title">TRANSMISSION LOG</span>
+      <span class="gold-display">◈ <strong id="gold-log">0</strong></span>
+    </div>
+    <div id="log-content" class="screen-content">
+      <div id="log-list"></div>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN: THE ATLAS ══ -->
+  <div id="screen-atlas" class="screen">
+    <div class="screen-topbar">
+      <button class="back-btn" id="btn-back-atlas">← RETURN TO WATER</button>
+      <span class="screen-title">THE ATLAS</span>
+      <span class="gold-display">◈ <strong id="gold-atlas">0</strong></span>
+    </div>
+    <div id="atlas-content" class="screen-content">
+      <div id="atlas-chart"></div>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN: THE BOAT ══ -->
+  <div id="screen-boat" class="screen">
+    <div class="screen-topbar">
+      <button class="back-btn" id="btn-back-boat">← RETURN TO WATER</button>
+      <span class="screen-title">THE BOAT</span>
+      <span class="gold-display">◈ <strong id="gold-boat">0</strong></span>
+    </div>
+    <div id="boat-content" class="screen-content">
+      <div id="boat-settings"></div>
+    </div>
+  </div>
+
+  <!-- ══ TRAVEL OVERLAY ══ -->
+  <div id="travel-overlay">
+    <div id="travel-label">DESCENDING...</div>
+    <div id="travel-depth">0m</div>
+    <div id="travel-sub">PRESSURE RISING</div>
+  </div>
+
+  <div id="transition-overlay"></div>
+
+  <!-- ══ SAVE MODAL ══ -->
+  <div id="save-modal" class="modal" style="display:none">
+    <div class="modal-box">
+      <div class="modal-title">EXPORT SAVE CODE</div>
+      <textarea id="save-textarea" spellcheck="false" readonly></textarea>
+      <div class="modal-btns">
+        <button class="modal-btn" id="modal-copy">COPY TO CLIPBOARD</button>
+        <button class="modal-btn" id="modal-save-close">CLOSE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ LOAD MODAL ══ -->
+  <div id="load-modal" class="modal" style="display:none">
+    <div class="modal-box">
+      <div class="modal-title">IMPORT SAVE CODE</div>
+      <textarea id="load-textarea" spellcheck="false" placeholder="PASTE SAVE CODE HERE..."></textarea>
+      <div class="modal-btns">
+        <button class="modal-btn" id="modal-import-btn">LOAD SAVE</button>
+        <button class="modal-btn" id="modal-load-close">CANCEL</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
