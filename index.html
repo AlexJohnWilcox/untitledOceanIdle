@@ -43,10 +43,10 @@
 
     <div id="fishing-nav">
       <button id="btn-shop"     class="bubble-btn" style="display:none">FISHMONGER'S REFUGE</button>
-      <button id="btn-log"      class="bubble-btn" style="display:none">TRANSMISSION LOG</button>
-      <button id="btn-upgrades" class="bubble-btn" style="display:none">UPGRADES</button>
+      <button id="btn-upgrades" class="bubble-btn" style="display:none">THE LAB</button>
       <button id="btn-atlas"    class="bubble-btn" style="display:none">THE ATLAS</button>
-      <button id="btn-boat"     class="bubble-btn" style="display:none">THE BOAT</button>
+      <button id="btn-boat"     class="bubble-btn" style="display:none">THE SUB</button>
+      <button id="btn-catalog"  class="bubble-btn" style="display:none">THE CATALOG</button>
     </div>
   </div>
 
@@ -61,7 +61,7 @@
       <div id="shop-layout">
         <div id="shop-left">
           <div id="shop-passive-info" style="display:none"></div>
-          <button id="btn-sell-all" class="sell-all-btn" style="display:none">[ SELL ALL ]</button>
+          <button id="btn-sell-all" class="sell-all-btn">[ SELL ALL ]</button>
           <div id="inventory-grid"></div>
         </div>
         <div id="shop-right">
@@ -75,24 +75,12 @@
   <div id="screen-upgrades" class="screen">
     <div class="screen-topbar">
       <button class="back-btn" id="btn-back-upgrades">← RETURN TO WATER</button>
-      <span class="screen-title">UPGRADES</span>
+      <span class="screen-title">THE LAB</span>
       <span class="gold-display">◈ <strong id="gold-upgrades">0</strong></span>
     </div>
     <div id="upgrades-tabs"></div>
     <div id="upgrades-content" class="screen-content">
       <div id="upgrades-grid"></div>
-    </div>
-  </div>
-
-  <!-- ══ SCREEN: TRANSMISSION LOG ══ -->
-  <div id="screen-log" class="screen">
-    <div class="screen-topbar">
-      <button class="back-btn" id="btn-back-log">← RETURN TO WATER</button>
-      <span class="screen-title">TRANSMISSION LOG</span>
-      <span class="gold-display">◈ <strong id="gold-log">0</strong></span>
-    </div>
-    <div id="log-content" class="screen-content">
-      <div id="log-list"></div>
     </div>
   </div>
 
@@ -112,11 +100,23 @@
   <div id="screen-boat" class="screen">
     <div class="screen-topbar">
       <button class="back-btn" id="btn-back-boat">← RETURN TO WATER</button>
-      <span class="screen-title">THE BOAT</span>
+      <span class="screen-title">THE SUB</span>
       <span class="gold-display">◈ <strong id="gold-boat">0</strong></span>
     </div>
     <div id="boat-content" class="screen-content">
       <div id="boat-settings"></div>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN: THE CATALOG ══ -->
+  <div id="screen-catalog" class="screen">
+    <div class="screen-topbar">
+      <button class="back-btn" id="btn-back-catalog">← RETURN TO WATER</button>
+      <span class="screen-title">THE CATALOG</span>
+      <span class="gold-display">◈ <strong id="gold-catalog">0</strong></span>
+    </div>
+    <div id="catalog-content" class="screen-content">
+      <div id="catalog-content-inner"></div>
     </div>
   </div>
 

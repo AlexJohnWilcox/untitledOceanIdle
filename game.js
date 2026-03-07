@@ -23,7 +23,7 @@ const ZONES = [
   },
   {
     id: 1, name: 'THE SHALLOWS', code: 'ZONE-01', depth: 20, tier: 'BEGINNER',
-    unlockCost: 200, implemented: true,
+    unlockCost: 500, implemented: true,
     fish: ['pale_goby', 'linked_eel', 'jaw_fish', 'signal_carp', 'mirror_scale'],
     spawnWeights: [40, 30, 20, 8, 2], maxFish: 5,
     ambientMessages: [
@@ -36,7 +36,7 @@ const ZONES = [
   },
   {
     id: 2, name: 'THE SANDBANK', code: 'ZONE-02', depth: 60, tier: 'BEGINNER',
-    unlockCost: 600, implemented: true,
+    unlockCost: 1500, implemented: true,
     fish: ['dust_feeder', 'multi_eye', 'the_knot', 'depth_worm', 'sandborn'],
     spawnWeights: [40, 30, 20, 8, 2], maxFish: 5,
     ambientMessages: [
@@ -49,7 +49,7 @@ const ZONES = [
   },
   {
     id: 3, name: 'THE REEF', code: 'ZONE-03', depth: 150, tier: 'BEGINNER',
-    unlockCost: 2000, implemented: true,
+    unlockCost: 5000, implemented: true,
     fish: ['irradiated_perch', 'rust_eel', 'deep_scout', 'abyssal_leech', 'the_watcher'],
     spawnWeights: [40, 30, 20, 8, 2], maxFish: 5,
     ambientMessages: [
@@ -62,11 +62,11 @@ const ZONES = [
   },
   {
     id: 4, name: 'THE SAND DUNES', code: 'ZONE-04', depth: 400, tier: 'INTERMEDIATE',
-    unlockCost: 8000, implemented: false, fish: [], spawnWeights: [], maxFish: 0, ambientMessages: [],
+    unlockCost: 15000, implemented: false, fish: [], spawnWeights: [], maxFish: 0, ambientMessages: [],
   },
   {
     id: 5, name: 'THE SEAWALL', code: 'ZONE-05', depth: 1000, tier: 'INTERMEDIATE',
-    unlockCost: 25000, implemented: false, fish: [], spawnWeights: [], maxFish: 0, ambientMessages: [],
+    unlockCost: 50000, implemented: false, fish: [], spawnWeights: [], maxFish: 0, ambientMessages: [],
   },
 ];
 
@@ -228,9 +228,10 @@ const COAST_ROCKS = [
 const UPGRADE_CATEGORIES = [
   { name: 'LINE CONTROL', ids: ['faster_reel', 'instant_retract', 'rod_speed'] },
   { name: 'TARGETING',    ids: ['targeting_scope'] },
-  { name: 'AUTOMATION',   ids: ['salvaged_net', 'sell_batch', 'fish_density'] },
-  { name: 'ABILITIES',    ids: ['bait_bomb', 'bait_cooldown', 'bait_strength', 'multi_cast', 'multi_cooldown', 'multi_duration'] },
+  { name: 'AUTOMATION',   ids: ['salvaged_net', 'fish_density'] },
+  { name: 'ABILITIES',    ids: ['bait_bomb', 'bait_cooldown', 'bait_strength', 'multi_cast', 'multi_cooldown', 'multi_duration', 'multi_rods'], special: 'abilities' },
   { name: 'CONSUMABLES',  ids: [], special: 'consumables' },
+  { name: 'MAP LOCATIONS', ids: ['atlas_access', 'boat_access', 'catalog_access'] },
 ];
 
 const CONSUMABLES_DEF = [
@@ -241,22 +242,26 @@ const CONSUMABLES_DEF = [
 
 const UPGRADES_DEF = [
   // LINE CONTROL
-  { id: 'faster_reel',     name: 'FASTER RELOAD',     desc: 'Cooldown on recast reduced by 0.4s per level',                                baseCost: 15,  max: 4,  costScale: 1.8, revealAt: 0   },
-  { id: 'instant_retract', name: 'QUICK RELEASE',     desc: 'Right-click to retract your hook. Each level increases retract speed by 40%',  baseCost: 25,  max: 5,  costScale: 1.6, revealAt: 0   },
-  { id: 'rod_speed',       name: 'FASTER CAST',       desc: 'Increases max cast speed by 20% per level. Tune it in The Boat.',             baseCost: 55,  max: 5,  costScale: 2.0, revealAt: 10  },
+  { id: 'faster_reel',     name: 'FASTER RELOAD',     desc: 'Recast cooldown reduced per level. At max: near-instant.',                     baseCost: 5,   max: 50, costScale: 1.12, revealAt: 0   },
+  { id: 'instant_retract', name: 'QUICK RELEASE',     desc: 'Right-click to retract. Each level increases retract speed. At max: lightning fast.', baseCost: 8, max: 50, costScale: 1.12, revealAt: 0 },
+  { id: 'rod_speed',       name: 'FASTER CAST',       desc: 'Increases max cast speed per level. Tune it in The Sub. At max: instant.',    baseCost: 10,  max: 50, costScale: 1.12, revealAt: 10  },
   // TARGETING
-  { id: 'targeting_scope', name: 'TARGETING SCOPE',   desc: 'Hook catch radius +18% per level',                                            baseCost: 40,  max: 5,  costScale: 1.9, revealAt: 32  },
+  { id: 'targeting_scope', name: 'TARGETING SCOPE',   desc: 'Hook catch radius increases per level. At max: massive reach.',                baseCost: 8,   max: 50, costScale: 1.12, revealAt: 32  },
   // AUTOMATION
-  { id: 'salvaged_net',    name: 'SALVAGED NET',      desc: '+1 passive fish caught every 20 seconds per level',                           baseCost: 60,  max: 8,  costScale: 1.7, revealAt: 50  },
-  { id: 'sell_batch',      name: 'BATCH SELLER',      desc: 'Unlocks the [SELL ALL] button in the shop',                                   baseCost: 30,  max: 1,  costScale: 1,   revealAt: 20  },
-  { id: 'fish_density',    name: 'DEEP BROADCAST',    desc: '+5% max active fish per level. The water gets crowded.',                      baseCost: 45,  max: 10, costScale: 1.6, revealAt: 15  },
+  { id: 'salvaged_net',    name: 'SALVAGED NET',      desc: 'Passive fish collection speed increases per level. At max: constant stream.',  baseCost: 10,  max: 50, costScale: 1.12, revealAt: 50  },
+  { id: 'fish_density',    name: 'DEEP BROADCAST',    desc: 'Max active fish increases per level. At max: the ocean teems.',                baseCost: 10,  max: 50, costScale: 1.12, revealAt: 15  },
   // ABILITIES
   { id: 'bait_bomb',       name: 'BAIT BOMB',         desc: 'Unlocks the BAIT button. Scatter bait to draw a frenzy of fish for 10s.',    baseCost: 200, max: 1,  costScale: 1,   revealAt: 150 },
-  { id: 'bait_cooldown',   name: 'BAIT EFFICIENCY',   desc: 'Reduces bait cooldown by 30s per level.',                                     baseCost: 300, max: 5,  costScale: 1.8, revealAt: 300 },
-  { id: 'bait_strength',   name: 'BAIT POTENCY',      desc: 'Bait attracts +6 extra fish per level.',                                      baseCost: 350, max: 5,  costScale: 1.7, revealAt: 300 },
+  { id: 'bait_cooldown',   name: 'BAIT EFFICIENCY',   desc: 'Reduces bait cooldown by 30s per level.',                                     baseCost: 300, max: 5,  costScale: 1.8, revealAt: 300, parent: 'bait_bomb' },
+  { id: 'bait_strength',   name: 'BAIT POTENCY',      desc: 'Bait attracts +6 extra fish per level.',                                      baseCost: 350, max: 5,  costScale: 1.7, revealAt: 300, parent: 'bait_bomb' },
   { id: 'multi_cast',      name: 'MULTI-CAST',        desc: 'Unlocks MULTI-CAST. Casts your line in 3 directions for 15s. 3 min cooldown.',baseCost: 500, max: 1,  costScale: 1,   revealAt: 400 },
-  { id: 'multi_cooldown',  name: 'MULTI-CAST SPEED',  desc: 'Reduces multi-cast cooldown by 15s per level.',                               baseCost: 600, max: 5,  costScale: 1.8, revealAt: 600 },
-  { id: 'multi_duration',  name: 'MULTI-CAST EXTEND', desc: 'Increases multi-cast duration by 3s per level.',                              baseCost: 550, max: 5,  costScale: 1.7, revealAt: 600 },
+  { id: 'multi_cooldown',  name: 'MULTI-CAST SPEED',  desc: 'Reduces multi-cast cooldown by 15s per level.',                               baseCost: 600, max: 5,  costScale: 1.8, revealAt: 600, parent: 'multi_cast' },
+  { id: 'multi_duration',  name: 'MULTI-CAST EXTEND', desc: 'Increases multi-cast duration by 3s per level.',                              baseCost: 550, max: 5,  costScale: 1.7, revealAt: 600, parent: 'multi_cast' },
+  { id: 'multi_rods',      name: 'MULTI-CAST RODS',   desc: '+1 extra rod per level during multi-cast.',                                   baseCost: 700, max: 4,  costScale: 2.0, revealAt: 600, parent: 'multi_cast' },
+  // MAP LOCATIONS
+  { id: 'atlas_access',    name: 'THE ATLAS',         desc: 'Chart the depths. View all zones and travel between them.',                   baseCost: 300, max: 1,  costScale: 1,   revealAt: 0   },
+  { id: 'boat_access',     name: 'THE BOAT',          desc: 'Access your vessel. Tune rod configuration and equipment.',                   baseCost: 200, max: 1,  costScale: 1,   revealAt: 0   },
+  { id: 'catalog_access',  name: 'THE CATALOG',       desc: 'A database of all ocean life. Track every species you have encountered.',     baseCost: 1000, max: 1, costScale: 1,   revealAt: 0   },
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -272,13 +277,15 @@ let state = {
   upgrades: {
     faster_reel: 0, instant_retract: 0, rod_speed: 0,
     targeting_scope: 0,
-    salvaged_net: 0, sell_batch: 0, fish_density: 0,
+    salvaged_net: 0, fish_density: 0,
     bait_bomb: 0, bait_cooldown: 0, bait_strength: 0,
-    multi_cast: 0, multi_cooldown: 0, multi_duration: 0,
+    multi_cast: 0, multi_cooldown: 0, multi_duration: 0, multi_rods: 0,
+    atlas_access: 0, boat_access: 0, catalog_access: 0,
   },
   consumables: { small_net: 0, big_net: 0, worm: 0 },
   activeConsumable: null,
-  stats: { totalCaught: 0, totalCasts: 0 },
+  stats: { totalCaught: 0, totalCasts: 0, totalUpgradesBought: 0 },
+  catalogCaught: {},
   passiveTimer: 0,
   baitTimer: 0,
   baitCooldown: 0,
@@ -287,41 +294,47 @@ let state = {
   boatSettings: { rodSpeedFactor: 1.0 },
   flags: {
     shopUnlocked:       false,
-    logUnlocked:        false,
     upgradesUnlocked:   false,
     atlasUnlocked:      false,
     boatUnlocked:       false,
     upgradesVisited:    false,
     atlasVisited:       false,
-    logVisited:         false,
     shopVisited:        false,
     boatVisited:        false,
     saveUnlocked:       false,
     baitVisible:        false,
     multiCastVisible:   false,
     consumablesSidebar: false,
+    consumableBought:   false,
+    firstUpgradeHinted: false,
+    catalogUnlocked:    false,
   },
+  showMaxedUpgrades: false,
 };
 
 // ─── Derived ───
 
 function getRecastCooldown() {
-  return Math.max(0.3, 1.5 - state.upgrades.faster_reel * 0.4);
+  // 1.5s at 0, ~0.05s at 50
+  return Math.max(0.05, 1.5 - state.upgrades.faster_reel * 0.029);
 }
 
 function getCastSpeed() {
+  // 450 at 0, ~1350 at 50 (3x)
   const baseSpeed = 450;
-  const maxSpeed = baseSpeed * (1 + state.upgrades.rod_speed * 0.20);
+  const maxSpeed = baseSpeed * (1 + state.upgrades.rod_speed * 0.04);
   return maxSpeed * state.boatSettings.rodSpeedFactor;
 }
 
 function getMaxFish() {
-  return Math.ceil(ZONES[state.currentZone].maxFish * (1 + state.upgrades.fish_density * 0.05));
+  // 1x at 0, 4x at 50
+  return Math.ceil(ZONES[state.currentZone].maxFish * (1 + state.upgrades.fish_density * 0.06));
 }
 
 function getCatchRadius(typeId) {
+  // 36 at 0, ~108 at 50 (3x)
   const base  = 36;
-  const scope = base * state.upgrades.targeting_scope * 0.18;
+  const scope = base * state.upgrades.targeting_scope * 0.04;
   return base + scope;
 }
 
@@ -387,13 +400,17 @@ function spawnFish() {
 
   const dir   = Math.random() < 0.5 ? 1 : -1;
   const baseY = canvasH * 0.1 + Math.random() * canvasH * 0.76;
-  const sizeScale = 0.8 + Math.random() * 0.4; // 0.8x to 1.2x
+  const sizeScale  = 0.7 + Math.random() * 0.6; // 0.7x to 1.3x
+  const def = FISH[typeId];
+  let speedScale = 0.8 + Math.random() * 0.4; // 0.8x to 1.2x
+  if (def.rarity === 'LEGENDARY') speedScale *= 2.5;
+  else if (def.rarity === 'EPIC') speedScale *= 1.5;
   cv.fish.push({
     id: cv.fishIdCounter++, type: typeId,
     x: dir === 1 ? -80 : canvasW + 80,
     baseY, currentY: baseY, dir,
     waveOffset: Math.random() * Math.PI * 2,
-    caught: false, catchAnim: 0, sizeScale,
+    caught: false, catchAnim: 0, sizeScale, speedScale,
   });
 }
 
@@ -421,7 +438,7 @@ function throwNet(cx, cy, typeId) {
     const dx = cx - f.x, dy = cy - f.currentY;
     if (Math.sqrt(dx*dx + dy*dy) < radius) { catchFish(f.id, f.type); caught++; }
   }
-  addLog(`> NET THROWN: caught ${caught} fish.`);
+
   audio.play('catch_rare');
   renderConsumablesPanel();
 }
@@ -447,14 +464,19 @@ function castHook(tx, ty) {
       const dx = tx - f.x, dy = ty - f.currentY;
       if (Math.sqrt(dx*dx + dy*dy) < wormRadius) f.attractedTo = { x: tx, y: ty };
     }
-    addLog('> WORM DEPLOYED. Something stirs in the water...');
     renderConsumablesPanel();
   }
 
-  // Multi-cast: fire two extra hooks with offset
+  // Multi-cast: fire extra hooks with offset (2 base + multi_rods upgrades)
   if (state.multiCastTimer > 0) {
-    const spread = 120;
-    for (const offset of [-spread, spread]) {
+    const extraRods = 2 + (state.upgrades.multi_rods || 0);
+    const offsets = [];
+    for (let i = 1; i <= extraRods; i++) {
+      const side = (i % 2 === 1) ? 1 : -1;
+      const dist = Math.ceil(i / 2) * 100;
+      offsets.push(side * dist);
+    }
+    for (const offset of offsets) {
       const mtx = Math.max(20, Math.min(canvasW - 20, tx + offset));
       setTimeout(() => {
         if (cv.cooldown > 0) return;
@@ -484,21 +506,20 @@ function buyUpgrade(id) {
   if (state.upgrades[id] >= def.max || state.gold < cost) return;
   state.gold -= cost;
   state.upgrades[id]++;
-  addLog(`> UPGRADE INSTALLED: ${def.name} [LVL ${state.upgrades[id]}]`);
+  state.stats.totalUpgradesBought++;
   audio.play('upgrade');
   updateAllGoldDisplays();
   renderUpgrades();
-  if (id === 'sell_batch') updateSellAllBtn();
   checkMilestones();
 }
 
 function useBait() {
   if (state.baitCooldown > 0 || state.upgrades.bait_bomb < 1) return;
+  state.flags.baitUsed = true;
   state.baitTimer   = 10;
   state.baitCooldown = 300 - state.upgrades.bait_cooldown * 30;
   const fishCount = 18 + state.upgrades.bait_strength * 6;
   for (let i = 0; i < fishCount; i++) setTimeout(() => spawnFish(), i * 80);
-  addLog('> BAIT DEPLOYED. Something stirs in the water.');
   updateBaitBtn();
 }
 
@@ -507,7 +528,6 @@ function useMultiCast() {
   const duration = 15 + state.upgrades.multi_duration * 3;
   state.multiCastTimer = duration;
   state.multiCastCooldown = 180 - state.upgrades.multi_cooldown * 15;
-  addLog(`> MULTI-CAST ACTIVE for ${duration}s. Lines fly in triplicate.`);
   updateMultiCastBtn();
 }
 
@@ -518,7 +538,6 @@ function sellFish(typeId) {
   state.gold += earned;
   state.totalGoldEarned += earned;
   delete state.inventory[typeId];
-  addLog(`> SOLD ${count}× ${FISH[typeId].name} — ${earned}◈`);
   audio.play('sell');
   checkMilestones();
   updateAllGoldDisplays();
@@ -533,8 +552,13 @@ function sellAll() {
   if (!count) return;
   state.gold += total;
   state.totalGoldEarned += total;
-  addLog(`> SOLD ALL (${count} fish) — ${total}◈`);
   audio.play('sell');
+  if (!state.flags.sellAllUsed) {
+    state.flags.sellAllUsed = true;
+    const backBtn = document.getElementById('btn-back-shop');
+    backBtn.classList.add('pulse-hint');
+    addGuideArrow(backBtn, 'left');
+  }
   checkMilestones();
   updateAllGoldDisplays();
   renderShop();
@@ -546,8 +570,6 @@ function purchaseZone(zoneId) {
   state.gold -= zone.unlockCost;
   state.unlockedZones.push(zoneId);
   updateAllGoldDisplays();
-  addLog(`> ZONE ACQUIRED: ${zone.name}`);
-  addLog(`> Descending. Something waits at ${zone.depth}m.`);
   audio.play('unlock');
   travelToZone(zoneId);
 }
@@ -557,17 +579,15 @@ function catchFish(fishId, typeId) {
   if (!fish || fish.caught) return;
   fish.caught = true;
   state.inventory[typeId] = (state.inventory[typeId] || 0) + 1;
+  state.catalogCaught[typeId] = (state.catalogCaught[typeId] || 0) + 1;
   state.stats.totalCaught++;
 
   const def    = FISH[typeId];
   const rar    = def.rarity;
   const rc     = RARITY_COLORS[rar];
-  const logCls = { RARE: 'rare', EPIC: 'epic', LEGENDARY: 'legendary' }[rar] || '';
 
   cv.catchFlashes.push({ x: fish.x, y: fish.currentY, timer: 1.6, text: `${def.name} [${rar}]`, color: rc.glow });
 
-  addLog(`> CAUGHT: ${def.name} (${rar}) — ${def.goldValue}◈`, logCls);
-  if (rar !== 'COMMON' && rar !== 'UNCOMMON') addLog(`  ↳ ${def.desc}`, logCls);
 
   audio.play(rar === 'COMMON' ? 'catch_common' : 'catch_rare');
   checkMilestones();
@@ -581,26 +601,29 @@ function checkMilestones() {
 
   if (!f.shopUnlocked && state.stats.totalCaught >= 3) {
     f.shopUnlocked = true;
-    showBubble('btn-shop', false);
+    showBubble('btn-shop', true);
   }
   if (!f.upgradesUnlocked && state.gold >= 15) {
     f.upgradesUnlocked = true;
     showBubble('btn-upgrades', true);
-  }
-  if (!f.atlasUnlocked && state.totalGoldEarned >= 100) {
-    f.atlasUnlocked = true;
-    showBubble('btn-atlas', true);
   }
   if (!f.saveUnlocked && state.totalGoldEarned >= 200) {
     f.saveUnlocked = true;
     document.getElementById('fishing-save-btns').classList.add('visible');
   }
 
-  // Boat unlocks after buying any first upgrade
-  const anyUpgradeBought = Object.values(state.upgrades).some(v => v > 0);
-  if (!f.boatUnlocked && anyUpgradeBought) {
+  // Atlas/Boat unlock via MAP LOCATIONS upgrades
+  if (!f.atlasUnlocked && state.upgrades.atlas_access >= 1) {
+    f.atlasUnlocked = true;
+    showBubble('btn-atlas', true);
+  }
+  if (!f.boatUnlocked && state.upgrades.boat_access >= 1) {
     f.boatUnlocked = true;
     showBubble('btn-boat', true);
+  }
+  if (!f.catalogUnlocked && state.upgrades.catalog_access >= 1) {
+    f.catalogUnlocked = true;
+    showBubble('btn-catalog', true);
   }
 
   // Bait button visible once bait_bomb is owned
@@ -610,6 +633,12 @@ function checkMilestones() {
     b.style.display = 'flex';
     b.classList.add('pulse-new');
     b.offsetHeight;
+    addGuideArrow(b, 'right');
+  }
+  // Show arrow on bait if visible but never used
+  if (f.baitVisible && !f.baitUsed) {
+    const b = document.getElementById('btn-bait');
+    if (!b.querySelector('.guide-arrow')) addGuideArrow(b, 'right');
   }
 
   // Multi-cast button visible
@@ -621,10 +650,6 @@ function checkMilestones() {
     mc.offsetHeight;
   }
 
-  // Gold counter after first catch
-  if (state.stats.totalCaught >= 1) {
-    document.getElementById('fishing-gold').classList.add('visible');
-  }
 }
 
 function updateBaitBtn() {
@@ -660,16 +685,34 @@ function updateMultiCastBtn() {
 function showBubble(id, unread) {
   const btn = document.getElementById(id);
   btn.style.display = 'block';
-  // Force reflow so CSS transition fires
   btn.offsetHeight;
   btn.classList.add('revealed');
-  if (unread) btn.classList.add('unread');
+  if (unread) {
+    btn.classList.add('unread');
+    addGuideArrow(btn);
+  }
+}
+
+function addGuideArrow(el, side) {
+  if (!el || el.querySelector('.guide-arrow')) return;
+  const arrow = document.createElement('span');
+  arrow.className = 'guide-arrow' + (side === 'right' ? ' arrow-right' : side === 'left' ? ' arrow-left' : '');
+  arrow.textContent = '▼';
+  el.style.position = el.style.position || 'relative';
+  el.appendChild(arrow);
+  el.addEventListener('click', () => {
+    const a = el.querySelector('.guide-arrow');
+    if (a) a.remove();
+    el.classList.remove('pulse-hint', 'unread', 'pulse-new');
+  }, { once: true });
 }
 
 function updateAllGoldDisplays() {
   const g = Math.floor(state.gold);
-  ['gold-fishing', 'gold-shop', 'gold-upgrades', 'gold-log', 'gold-atlas', 'gold-boat'].forEach(id => {
-    document.getElementById(id).textContent = g;
+  ['gold-fishing', 'gold-shop', 'gold-upgrades', 'gold-atlas', 'gold-boat', 'gold-catalog'].forEach(id => {
+    const elem = document.getElementById(id);
+    if (!elem) return;
+    elem.textContent = g;
   });
 }
 
@@ -689,7 +732,7 @@ function flashZoneOverlay() {
 
 // ─── Screen management ───
 
-const ALL_SCREENS = ['screen-fishing', 'screen-shop', 'screen-upgrades', 'screen-log', 'screen-atlas', 'screen-boat'];
+const ALL_SCREENS = ['screen-fishing', 'screen-shop', 'screen-upgrades', 'screen-atlas', 'screen-boat', 'screen-catalog'];
 
 function switchScreen(to) {
   const overlay = document.getElementById('transition-overlay');
@@ -701,39 +744,39 @@ function switchScreen(to) {
     overlay.classList.remove('flash');
 
     if (to === 'screen-shop') {
-      if (!state.flags.shopVisited) {
-        state.flags.shopVisited = true;
-        state.flags.logUnlocked = true;
-        addLog('> FISHMONGER\'S REFUGE: connection established.');
-        addLog('> Sell your catch. Return to water.');
-        document.getElementById('btn-back-shop').classList.add('pulse-hint');
-      }
+      state.flags.shopVisited = true;
       renderShop();
     }
     if (to === 'screen-upgrades') {
       document.getElementById('btn-upgrades').classList.remove('unread');
+      const firstVisit = !state.flags.upgradesVisited;
       state.flags.upgradesVisited = true;
       renderUpgrades();
+      // Pulse the first upgrade card on first visit
+      if (firstVisit && !state.flags.firstUpgradeHinted) {
+        state.flags.firstUpgradeHinted = true;
+        const firstCard = document.querySelector('.upg-card');
+        if (firstCard) {
+          firstCard.classList.add('pulse-hint');
+          addGuideArrow(firstCard);
+        }
+      }
     }
     if (to === 'screen-atlas') {
       document.getElementById('btn-atlas').classList.remove('unread');
       state.flags.atlasVisited = true;
       renderAtlas();
     }
-    if (to === 'screen-log') {
-      document.getElementById('btn-log').classList.remove('unread');
-      state.flags.logVisited = true;
-    }
     if (to === 'screen-boat') {
       document.getElementById('btn-boat').classList.remove('unread');
       state.flags.boatVisited = true;
       renderBoat();
     }
+    if (to === 'screen-catalog') {
+      document.getElementById('btn-catalog').classList.remove('unread');
+      renderCatalog();
+    }
     if (to === 'screen-fishing') {
-      // Show log button if unlocked but not yet shown
-      if (state.flags.logUnlocked && !document.getElementById('btn-log').classList.contains('revealed')) {
-        showBubble('btn-log', !state.flags.logVisited);
-      }
     }
   }, 180);
 }
@@ -812,7 +855,7 @@ function update(dt, t) {
         f.dir = dx >= 0 ? 1 : -1;
       }
     } else {
-      f.x += def.speed * f.dir * dt;
+      f.x += def.speed * (f.speedScale || 1) * f.dir * dt;
       f.currentY = def.wave
         ? f.baseY + Math.sin(t * def.wave.freq + f.waveOffset) * def.wave.amp
         : f.baseY;
@@ -841,7 +884,7 @@ function update(dt, t) {
       const dir = Math.random() < 0.5 ? 1 : -1;
       cv.ships.push({
         x: dir === 1 ? -200 : canvasW + 200,
-        y: canvasH * 0.025 + Math.random() * canvasH * 0.025,
+        y: canvasH * 0.065 + Math.random() * canvasH * 0.02,
         dir, speed: 22 + Math.random() * 18,
         size: 0.7 + Math.random() * 0.5,
       });
@@ -894,7 +937,8 @@ function update(dt, t) {
     } else if (h.state === 'retracting') {
       const dx = h.ox - h.x, dy = h.oy - h.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      const retractMult = h.quickRetract ? (1 + (Math.max(0, state.upgrades.instant_retract - 1) * 0.40)) : 1;
+      // 1x at lvl1, ~10x at lvl50
+      const retractMult = h.quickRetract ? (1 + (Math.max(0, state.upgrades.instant_retract - 1) * 0.18)) : 1;
       const step = Math.max(SPEED, 600) * retractMult * dt;
       if (step >= dist) {
         cv.hook = null; cv.cooldown = getRecastCooldown();
@@ -949,30 +993,29 @@ function update(dt, t) {
   }
 
   if (state.upgrades.salvaged_net > 0) {
+    const n = state.upgrades.salvaged_net;
+    const interval = 20 / n; // seconds between each fish
     state.passiveTimer += dt;
-    if (state.passiveTimer >= 20) {
-      state.passiveTimer -= 20;
+    if (state.passiveTimer >= interval) {
+      state.passiveTimer -= interval;
       const highestZoneId = Math.max(...state.unlockedZones.filter(z => ZONES[z].implemented));
       const hz = ZONES[highestZoneId];
-      const n = state.upgrades.salvaged_net;
-      for (let pi = 0; pi < n; pi++) {
-        const weights = hz.spawnWeights;
-        const total = weights.reduce((a, b) => a + b, 0);
-        let roll = Math.random() * total, passiveType = hz.fish[0];
-        for (let wi = 0; wi < hz.fish.length; wi++) { roll -= weights[wi]; if (roll <= 0) { passiveType = hz.fish[wi]; break; } }
-        state.inventory[passiveType] = (state.inventory[passiveType] || 0) + 1;
-      }
-      state.stats.totalCaught += n;
-      addLog(`> NET CATCH: +${n} fish from ${hz.name}`);
+      const weights = hz.spawnWeights;
+      const total = weights.reduce((a, b) => a + b, 0);
+      let roll = Math.random() * total, passiveType = hz.fish[0];
+      for (let wi = 0; wi < hz.fish.length; wi++) { roll -= weights[wi]; if (roll <= 0) { passiveType = hz.fish[wi]; break; } }
+      state.inventory[passiveType] = (state.inventory[passiveType] || 0) + 1;
+      state.catalogCaught[passiveType] = (state.catalogCaught[passiveType] || 0) + 1;
+      state.stats.totalCaught++;
       checkMilestones();
       updateAllGoldDisplays();
+      if (document.getElementById('screen-shop').classList.contains('active')) renderShop();
     }
   }
 
   cv.ambientTimer -= dt;
   if (cv.ambientTimer <= 0 && zone.ambientMessages.length) {
     cv.ambientTimer = 36 + Math.random() * 52;
-    addLog(zone.ambientMessages[Math.floor(Math.random() * zone.ambientMessages.length)]);
   }
 
   if (state.currentZone === 0) updateCrab(dt);
@@ -1023,9 +1066,9 @@ function clickCrab(cx, cy) {
   const ry = canvasH * rock.fy - 18 - 12 + (1 - c.peekAnim) * 40;
   if (Math.sqrt((cx - rx) ** 2 + (cy - ry) ** 2) < 34) {
     state.inventory['shore_crab'] = (state.inventory['shore_crab'] || 0) + 1;
+    state.catalogCaught['shore_crab'] = (state.catalogCaught['shore_crab'] || 0) + 1;
     state.stats.totalCaught++;
     cv.catchFlashes.push({ x: rx, y: ry, timer: 1.6, text: 'SHORE CRAB [RARE]', color: RARITY_COLORS.RARE.glow });
-    addLog('> CAUGHT: SHORE CRAB (RARE) — 50◈', 'rare');
     audio.play('catch_rare');
     c.active = false;
     c.spawnTimer = 30 + Math.random() * 45;
@@ -1072,9 +1115,9 @@ function clickSpecial(obj, typeId, cx, cy) {
   if (Math.sqrt((cx - rx) ** 2 + (cy - ry) ** 2) < 36) {
     const def = FISH[typeId];
     state.inventory[typeId] = (state.inventory[typeId] || 0) + 1;
+    state.catalogCaught[typeId] = (state.catalogCaught[typeId] || 0) + 1;
     state.stats.totalCaught++;
     cv.catchFlashes.push({ x: rx, y: ry, timer: 1.6, text: `${def.name} [RARE]`, color: RARITY_COLORS.RARE.glow });
-    addLog(`> CAUGHT: ${def.name} (RARE) — ${def.goldValue}◈`, 'rare');
     audio.play('catch_rare');
     obj.active = false;
     obj.spawnTimer = 35 + Math.random() * 45;
@@ -1889,10 +1932,17 @@ function updatePassiveInfo() {
   const el = document.getElementById('shop-passive-info');
   if (state.upgrades.salvaged_net > 0) {
     const n = state.upgrades.salvaged_net;
-    const rate = (n / 20).toFixed(1);
     const highestZoneId = Math.max(...state.unlockedZones.filter(z => ZONES[z].implemented));
+    const zoneName = ZONES[highestZoneId].name;
+    const secsPerFish = 20 / n;
+    let rateStr;
+    if (secsPerFish >= 1) {
+      rateStr = `1 fish every ${secsPerFish.toFixed(1)}s`;
+    } else {
+      rateStr = `${(n / 20).toFixed(1)} fish/s`;
+    }
     el.style.display = '';
-    el.textContent = `NET: ${rate} fish/s from ${ZONES[highestZoneId].name}`;
+    el.textContent = `NET: ${rateStr} from ${zoneName}`;
   } else {
     el.style.display = 'none';
   }
@@ -1903,122 +1953,118 @@ function renderFishmongerArt() {
   if (!container) return;
   container.innerHTML = '';
   const shopRight = document.getElementById('shop-right');
-  const artH = Math.max(600, shopRight.clientHeight || 700);
+  const artH = Math.max(500, shopRight.clientHeight || 600);
+  const W = 380;
+  const cx = W / 2; // center x
   const c = document.createElement('canvas');
-  c.width = 280; c.height = artH;
+  c.width = W; c.height = artH;
   container.appendChild(c);
   const x = c.getContext('2d');
 
   // Background — dark shop interior
   x.fillStyle = '#010a04';
-  x.fillRect(0, 0, 280, artH);
+  x.fillRect(0, 0, W, artH);
 
-  // Counter
+  // Counter (wider, lower)
+  const counterY = 310;
   x.fillStyle = '#0a1a0a';
-  x.fillRect(10, 280, 260, 50);
+  x.fillRect(10, counterY, W - 20, 60);
   x.strokeStyle = '#00cc8844';
   x.lineWidth = 1;
-  x.strokeRect(10, 280, 260, 50);
-
-  // Counter surface highlight
+  x.strokeRect(10, counterY, W - 20, 60);
   x.fillStyle = '#0e2a12';
-  x.fillRect(12, 282, 256, 4);
+  x.fillRect(12, counterY + 2, W - 24, 5);
 
-  // Fishmonger body
+  // Fishmonger body (bigger)
   x.fillStyle = '#061208';
-  x.fillRect(105, 160, 70, 120);
+  x.fillRect(cx - 50, 160, 100, 150);
 
   // Apron
   x.fillStyle = '#0a2a10';
-  x.fillRect(110, 200, 60, 80);
+  x.fillRect(cx - 42, 210, 84, 100);
   x.strokeStyle = '#00885544';
-  x.strokeRect(110, 200, 60, 80);
+  x.strokeRect(cx - 42, 210, 84, 100);
 
-  // Head
+  // Head (bigger)
   x.fillStyle = '#0c1e0c';
   x.beginPath();
-  x.arc(140, 145, 30, 0, Math.PI * 2);
+  x.arc(cx, 140, 42, 0, Math.PI * 2);
   x.fill();
 
-  // Eyes (glowing green)
+  // Eyes (glowing green, bigger)
   x.fillStyle = '#00ff88';
   x.shadowColor = '#00ff88';
-  x.shadowBlur = 8;
-  x.beginPath(); x.arc(130, 140, 3, 0, Math.PI * 2); x.fill();
-  x.beginPath(); x.arc(150, 140, 3, 0, Math.PI * 2); x.fill();
+  x.shadowBlur = 12;
+  x.beginPath(); x.arc(cx - 14, 135, 4.5, 0, Math.PI * 2); x.fill();
+  x.beginPath(); x.arc(cx + 14, 135, 4.5, 0, Math.PI * 2); x.fill();
   x.shadowBlur = 0;
 
   // Hat / bandana
   x.fillStyle = '#00886644';
-  x.fillRect(108, 118, 64, 12);
+  x.fillRect(cx - 44, 102, 88, 16);
 
-  // Arms
+  // Arms (bigger)
   x.fillStyle = '#061208';
-  x.fillRect(80, 200, 25, 70);
-  x.fillRect(175, 200, 25, 70);
+  x.fillRect(cx - 80, 220, 32, 85);
+  x.fillRect(cx + 48, 220, 32, 85);
 
   // Hands on counter
   x.fillStyle = '#0c1e0c';
-  x.beginPath(); x.arc(92, 274, 10, 0, Math.PI * 2); x.fill();
-  x.beginPath(); x.arc(188, 274, 10, 0, Math.PI * 2); x.fill();
+  x.beginPath(); x.arc(cx - 64, counterY - 4, 14, 0, Math.PI * 2); x.fill();
+  x.beginPath(); x.arc(cx + 64, counterY - 4, 14, 0, Math.PI * 2); x.fill();
 
-  // Fish on hooks behind (hanging)
-  const fishColors = ['#00cc66', '#88ccff', '#ff4466', '#cc44ff'];
-  const fishX = [50, 110, 170, 230];
-  for (let i = 0; i < 4; i++) {
-    const fy = 50 + Math.sin(i * 1.5) * 10;
-    // Hook line
+  // Fish on hooks behind (hanging, bigger)
+  const fishColors = ['#00cc66', '#88ccff', '#ff4466', '#cc44ff', '#ffcc44'];
+  const fishXs = [50, 120, 190, 260, 330];
+  for (let i = 0; i < 5; i++) {
+    const fy = 45 + Math.sin(i * 1.5) * 12;
     x.strokeStyle = '#004422';
     x.lineWidth = 1;
-    x.beginPath(); x.moveTo(fishX[i], 10); x.lineTo(fishX[i], fy); x.stroke();
-    // Hook
+    x.beginPath(); x.moveTo(fishXs[i], 8); x.lineTo(fishXs[i], fy); x.stroke();
     x.strokeStyle = '#00885544';
-    x.beginPath(); x.arc(fishX[i], fy + 4, 4, 0, Math.PI); x.stroke();
-    // Fish body
+    x.beginPath(); x.arc(fishXs[i], fy + 5, 5, 0, Math.PI); x.stroke();
     x.fillStyle = fishColors[i];
     x.shadowColor = fishColors[i];
-    x.shadowBlur = 6;
+    x.shadowBlur = 8;
     x.beginPath();
-    x.ellipse(fishX[i], fy + 18, 14, 7, 0, 0, Math.PI * 2);
+    x.ellipse(fishXs[i], fy + 22, 18, 9, 0, 0, Math.PI * 2);
     x.fill();
-    // Tail
     x.beginPath();
-    x.moveTo(fishX[i] - 12, fy + 18);
-    x.lineTo(fishX[i] - 22, fy + 10);
-    x.lineTo(fishX[i] - 22, fy + 26);
+    x.moveTo(fishXs[i] - 16, fy + 22);
+    x.lineTo(fishXs[i] - 28, fy + 12);
+    x.lineTo(fishXs[i] - 28, fy + 32);
     x.closePath();
     x.fill();
     x.shadowBlur = 0;
-    // Eye
     x.fillStyle = '#000';
-    x.beginPath(); x.arc(fishX[i] + 6, fy + 16, 2, 0, Math.PI * 2); x.fill();
+    x.beginPath(); x.arc(fishXs[i] + 8, fy + 19, 2.5, 0, Math.PI * 2); x.fill();
   }
 
   // Shelves behind
   x.strokeStyle = '#003a20';
   x.lineWidth = 1;
-  x.beginPath(); x.moveTo(20, 90); x.lineTo(260, 90); x.stroke();
+  x.beginPath(); x.moveTo(20, 90); x.lineTo(W - 20, 90); x.stroke();
 
-  // Jars on shelf
+  // Jars on shelf (bigger)
   x.fillStyle = '#001a0a';
-  for (const jx of [35, 80, 200, 240]) {
-    x.fillRect(jx - 8, 70, 16, 20);
+  for (const jx of [40, 100, 280, 340]) {
+    x.fillRect(jx - 10, 68, 20, 22);
     x.strokeStyle = '#00cc6622';
-    x.strokeRect(jx - 8, 70, 16, 20);
+    x.strokeRect(jx - 10, 68, 20, 22);
   }
 
   // Floor
   x.fillStyle = '#060e06';
-  x.fillRect(0, 330, 280, artH - 330);
+  x.fillRect(0, counterY + 60, W, artH - counterY - 60);
   x.strokeStyle = '#003a20';
   x.lineWidth = 0.5;
-  for (let lx = 0; lx < 280; lx += 40) {
-    x.beginPath(); x.moveTo(lx, 330); x.lineTo(lx, artH); x.stroke();
+  for (let lx = 0; lx < W; lx += 45) {
+    x.beginPath(); x.moveTo(lx, counterY + 60); x.lineTo(lx, artH); x.stroke();
   }
 
   // Accent glow on counter
   x.fillStyle = 'rgba(0,204,221,0.06)';
-  x.fillRect(10, 278, 260, 4);
+  x.fillRect(10, counterY - 2, W - 20, 4);
 }
 
 function renderInventory() {
@@ -2063,13 +2109,15 @@ function renderInventory() {
 
 function updateSellAllBtn() {
   const btn = document.getElementById('btn-sell-all');
-  if (state.upgrades.sell_batch >= 1) {
-    btn.style.display = '';
-    const total = Object.entries(state.inventory)
-      .reduce((s, [id, q]) => s + q * (FISH[id]?.goldValue || 0), 0);
-    btn.textContent = total > 0 ? `[ SELL ALL — ${total}◈ ]` : '[ SELL ALL ]';
-  } else {
-    btn.style.display = 'none';
+  btn.style.display = '';
+  const total = Object.entries(state.inventory)
+    .reduce((s, [id, q]) => s + q * (FISH[id]?.goldValue || 0), 0);
+  btn.textContent = total > 0 ? `[ SELL ALL — ${total}◈ ]` : '[ SELL ALL ]';
+  if (!state.flags.sellAllUsed && total > 0) {
+    if (!btn.querySelector('.guide-arrow')) {
+      btn.classList.add('pulse-hint');
+      addGuideArrow(btn);
+    }
   }
 }
 
@@ -2082,8 +2130,7 @@ function buyConsumable(id) {
   if (!def || state.gold < def.cost) return;
   state.gold -= def.cost;
   state.consumables[id] = (state.consumables[id] || 0) + 1;
-  state.totalGoldEarned += def.cost;
-  addLog(`> PURCHASED: ${def.name} [×${state.consumables[id]}]`);
+  state.flags.consumableBought = true;
   audio.play('upgrade');
   updateAllGoldDisplays();
   renderUpgrades();
@@ -2091,11 +2138,13 @@ function buyConsumable(id) {
   if (!state.flags.consumablesSidebar) {
     state.flags.consumablesSidebar = true;
     const sidebar = document.getElementById('consumables-sidebar');
-    if (sidebar) {
-      sidebar.classList.add('visible');
-      sidebar.classList.add('open');
-      document.getElementById('consumables-toggle').textContent = '◀';
-    }
+    if (sidebar) sidebar.classList.add('visible');
+  }
+  // Pulse the toggle button instead of auto-opening
+  const toggle = document.getElementById('consumables-toggle');
+  if (toggle) {
+    toggle.classList.add('pulse-hint');
+    addGuideArrow(toggle);
   }
 }
 
@@ -2135,16 +2184,20 @@ function renderConsumablesPanel() {
 
 let activeUpgradeTab = 0;
 
+function getVisibleCategories() {
+  const t = state.stats.totalUpgradesBought || 0;
+  return UPGRADE_CATEGORIES.filter((cat) => {
+    if (cat.name === 'LINE CONTROL' || cat.name === 'TARGETING') return true;
+    if (cat.name === 'AUTOMATION' || cat.name === 'ABILITIES') return t >= 3;
+    if (cat.name === 'CONSUMABLES' || cat.name === 'MAP LOCATIONS') return t >= 6;
+    return false;
+  });
+}
+
 function renderUpgradeTabs() {
   const tabsEl = document.getElementById('upgrades-tabs');
   tabsEl.innerHTML = '';
-  const visibleCats = UPGRADE_CATEGORIES.filter(cat => {
-    if (cat.special === 'consumables') return true;
-    return cat.ids.some(id => {
-      const def = UPGRADES_DEF.find(u => u.id === id);
-      return def && state.totalGoldEarned >= def.revealAt;
-    });
-  });
+  const visibleCats = getVisibleCategories();
   if (!visibleCats.length) return;
   if (activeUpgradeTab >= visibleCats.length) activeUpgradeTab = 0;
 
@@ -2162,13 +2215,7 @@ function renderUpgrades() {
   const el = document.getElementById('upgrades-grid');
   el.innerHTML = '';
 
-  const visibleCats = UPGRADE_CATEGORIES.filter(cat => {
-    if (cat.special === 'consumables') return true;
-    return cat.ids.some(id => {
-      const def = UPGRADES_DEF.find(u => u.id === id);
-      return def && state.totalGoldEarned >= def.revealAt;
-    });
-  });
+  const visibleCats = getVisibleCategories();
 
   if (!visibleCats.length) {
     el.innerHTML = '<div class="upg-empty">// NO UPGRADES AVAILABLE YET</div>';
@@ -2210,11 +2257,47 @@ function renderUpgrades() {
     return;
   }
 
-  const defs = cat.ids
-    .map(id => UPGRADES_DEF.find(u => u.id === id))
-    .filter(def => def && state.totalGoldEarned >= def.revealAt);
+  // Show/hide maxed toggle (always visible)
+  {
+    const toggleDiv = document.createElement('div');
+    toggleDiv.className = 'upg-maxed-toggle';
+    toggleDiv.innerHTML = `
+      <label class="toggle-switch">
+        <input type="checkbox" ${state.showMaxedUpgrades ? 'checked' : ''}>
+        <span class="toggle-slider"></span>
+      </label>
+      <span class="toggle-label">SHOW PURCHASED</span>`;
+    toggleDiv.querySelector('input').addEventListener('change', (e) => {
+      state.showMaxedUpgrades = e.target.checked;
+      renderUpgrades();
+    });
+    el.appendChild(toggleDiv);
+  }
 
-  if (!defs.length) return;
+  // For abilities: only show parent upgrades initially, children after parent purchased
+  let defs = cat.ids
+    .map(id => UPGRADES_DEF.find(u => u.id === id))
+    .filter(Boolean);
+
+  if (cat.special === 'abilities') {
+    defs = defs.filter(def => {
+      if (!def.parent) return true;
+      return (state.upgrades[def.parent] || 0) >= 1;
+    });
+  }
+
+  // Hide maxed unless toggle is on
+  if (!state.showMaxedUpgrades) {
+    defs = defs.filter(def => state.upgrades[def.id] < def.max);
+  }
+
+  if (!defs.length) {
+    const emptyDiv = document.createElement('div');
+    emptyDiv.className = 'upg-empty';
+    emptyDiv.textContent = '// ALL UPGRADES PURCHASED';
+    el.appendChild(emptyDiv);
+    return;
+  }
 
   const catDiv = document.createElement('div');
   catDiv.className = 'upg-category';
@@ -2224,17 +2307,13 @@ function renderUpgrades() {
   header.textContent = cat.name;
   catDiv.appendChild(header);
 
-  const grid = document.createElement('div');
-  grid.className = 'upg-category-grid';
-
-  for (const def of defs) {
+  function makeCard(def) {
     const owned  = state.upgrades[def.id];
     const maxed  = owned >= def.max;
     const cost   = upgradeCost(def.id);
     const canBuy = !maxed && state.gold >= cost;
-
     const card = document.createElement('div');
-    card.className = `upg-card${canBuy ? ' can-buy' : ''}${maxed ? ' maxed' : ''}`;
+    card.className = `upg-card${canBuy ? ' can-buy' : ''}${maxed ? ' maxed' : ''}${def.parent ? ' upg-child' : ''}`;
     card.innerHTML = `
       <div class="upg-card-top">
         <div class="upg-name">${def.name}</div>
@@ -2249,10 +2328,45 @@ function renderUpgrades() {
       </div>
     `;
     if (!maxed) card.querySelector('.upg-btn').addEventListener('click', () => buyUpgrade(def.id));
-    grid.appendChild(card);
+    return card;
   }
 
-  catDiv.appendChild(grid);
+  if (cat.special === 'abilities') {
+    // Group by parent ability
+    const parents = defs.filter(d => !d.parent);
+    const children = defs.filter(d => d.parent);
+    const abilityColors = { bait_bomb: 'ability-red', multi_cast: 'ability-purple' };
+    for (const parent of parents) {
+      const group = document.createElement('div');
+      group.className = `upg-ability-group ${abilityColors[parent.id] || ''}`;
+      const groupLabel = document.createElement('div');
+      groupLabel.className = 'upg-ability-group-label';
+      groupLabel.textContent = parent.name;
+      group.appendChild(groupLabel);
+      const groupGrid = document.createElement('div');
+      groupGrid.className = 'upg-category-grid';
+      groupGrid.appendChild(makeCard(parent));
+      const kids = children.filter(d => d.parent === parent.id);
+      for (const kid of kids) groupGrid.appendChild(makeCard(kid));
+      group.appendChild(groupGrid);
+      catDiv.appendChild(group);
+    }
+    // Any orphan children (parent is maxed/hidden)
+    const shownParentIds = parents.map(p => p.id);
+    const orphans = children.filter(d => !shownParentIds.includes(d.parent));
+    if (orphans.length) {
+      const grid = document.createElement('div');
+      grid.className = 'upg-category-grid';
+      for (const def of orphans) grid.appendChild(makeCard(def));
+      catDiv.appendChild(grid);
+    }
+  } else {
+    const grid = document.createElement('div');
+    grid.className = 'upg-category-grid';
+    for (const def of defs) grid.appendChild(makeCard(def));
+    catDiv.appendChild(grid);
+  }
+
   el.appendChild(catDiv);
 }
 
@@ -2275,14 +2389,7 @@ function renderAtlas() {
 
     const nameRevealed = (unlocked || isCur) || (zone.unlockCost && state.gold >= zone.unlockCost * 0.8);
 
-    const fishBreak = (unlocked || isCur) ? `
-      <div class="atlas-fish-breakdown">
-        <span class="fish-pct common">COMMON 40%</span>
-        <span class="fish-pct uncommon">UNCOMMON 30%</span>
-        <span class="fish-pct rare">RARE 20%</span>
-        <span class="fish-pct epic">EPIC 8%</span>
-        <span class="fish-pct legendary">LEGENDARY 2%</span>
-      </div>` : '';
+    const fishBreak = '';
 
     let actionBlock = '';
     if (isCur) {
@@ -2358,8 +2465,8 @@ function renderBoat() {
   el.appendChild(header);
 
   if (hasRodSpeed) {
-    const maxPct = 100 + state.upgrades.rod_speed * 20;
-    const minPct = Math.round((150 / (450 * (1 + state.upgrades.rod_speed * 0.20))) * 100);
+    const maxPct = 100 + state.upgrades.rod_speed * 4;
+    const minPct = Math.round((150 / (450 * (1 + state.upgrades.rod_speed * 0.04))) * 100);
     const curPct = Math.round(state.boatSettings.rodSpeedFactor * 100);
 
     const setting = document.createElement('div');
@@ -2387,18 +2494,85 @@ function renderBoat() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  LOG
+//  CATALOG RENDERING
 // ═══════════════════════════════════════════════════════════════
 
-const logEl = document.getElementById('log-list');
+let catalogSort = 'rarity'; // 'rarity' or 'zone'
 
-function addLog(msg, cls = '') {
-  const ts    = new Date().toLocaleTimeString('en-US', { hour12: false });
-  const entry = document.createElement('div');
-  entry.className = `log-entry${cls ? ' log-' + cls : ''}`;
-  entry.innerHTML = `<span class="log-ts">[${ts}]</span> ${esc(msg)}`;
-  logEl.prepend(entry);
-  while (logEl.children.length > 120) logEl.lastChild.remove();
+function renderCatalog() {
+  const el = document.getElementById('catalog-content-inner');
+  if (!el) return;
+  el.innerHTML = '';
+
+  // Sort controls
+  const controls = document.createElement('div');
+  controls.className = 'catalog-controls';
+  controls.innerHTML = `
+    <button class="catalog-sort-btn${catalogSort === 'rarity' ? ' active' : ''}" data-sort="rarity">SORT: RARITY</button>
+    <button class="catalog-sort-btn${catalogSort === 'zone' ? ' active' : ''}" data-sort="zone">SORT: ZONE</button>
+  `;
+  controls.querySelectorAll('.catalog-sort-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      catalogSort = btn.dataset.sort;
+      renderCatalog();
+    });
+  });
+  el.appendChild(controls);
+
+  // Build fish list (exclude clickable specials with speed 0 for cleaner display? no, include all)
+  const allFish = Object.entries(FISH);
+  let sorted;
+  if (catalogSort === 'zone') {
+    sorted = allFish.sort(([,a], [,b]) => a.zone - b.zone || RARITY_ORDER[a.rarity] - RARITY_ORDER[b.rarity]);
+  } else {
+    sorted = allFish.sort(([,a], [,b]) => RARITY_ORDER[a.rarity] - RARITY_ORDER[b.rarity] || a.zone - b.zone);
+  }
+
+  // Stats summary
+  const discovered = sorted.filter(([id]) => (state.catalogCaught[id] || 0) > 0).length;
+  const summary = document.createElement('div');
+  summary.className = 'catalog-summary';
+  summary.textContent = `SPECIES DISCOVERED: ${discovered} / ${sorted.length}`;
+  el.appendChild(summary);
+
+  const grid = document.createElement('div');
+  grid.className = 'catalog-grid';
+
+  for (const [fishId, def] of sorted) {
+    const caught = state.catalogCaught[fishId] || 0;
+    const known = caught > 0;
+    const rc = RARITY_COLORS[def.rarity];
+    const zoneName = ZONES[def.zone]?.name || '???';
+
+    const card = document.createElement('div');
+    card.className = `catalog-card${known ? '' : ' catalog-unknown'} rarity-${def.rarity.toLowerCase()}`;
+    card.innerHTML = known ? `
+      <div class="catalog-card-header">
+        <span class="catalog-fish-name" style="color:${rc.color}">${def.name}</span>
+        <span class="catalog-rarity" style="color:${rc.color}">${def.rarity}</span>
+      </div>
+      <div class="catalog-card-body">
+        <div class="catalog-desc">${def.desc}</div>
+        <div class="catalog-meta">
+          <span>${zoneName}</span>
+          <span>${def.goldValue}◈</span>
+          <span>caught: ${caught}</span>
+        </div>
+      </div>
+    ` : `
+      <div class="catalog-card-header">
+        <span class="catalog-fish-name">???</span>
+        <span class="catalog-rarity">${def.rarity}</span>
+      </div>
+      <div class="catalog-card-body">
+        <div class="catalog-desc">[ NOT YET ENCOUNTERED ]</div>
+        <div class="catalog-meta"><span>${zoneName}</span></div>
+      </div>
+    `;
+    grid.appendChild(card);
+  }
+
+  el.appendChild(grid);
 }
 
 function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -2409,7 +2583,7 @@ function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>
 
 function exportSave() {
   return btoa(JSON.stringify({
-    v: 7,
+    v: 9,
     gold: Math.floor(state.gold),
     totalGoldEarned: Math.floor(state.totalGoldEarned),
     currentZone: state.currentZone,
@@ -2423,13 +2597,14 @@ function exportSave() {
     multiCastCooldown: state.multiCastCooldown,
     boatSettings: state.boatSettings,
     flags: state.flags,
+    catalogCaught: state.catalogCaught,
   }));
 }
 
 function importSave(code) {
   try {
     const d = JSON.parse(atob(code.trim()));
-    if (![5,6,7].includes(d.v)) throw new Error('version mismatch');
+    if (![5,6,7,8,9].includes(d.v)) throw new Error('version mismatch');
     state.gold            = d.gold || 0;
     state.totalGoldEarned = d.totalGoldEarned || 0;
     state.currentZone     = d.currentZone || 0;
@@ -2443,14 +2618,13 @@ function importSave(code) {
     state.multiCastCooldown = d.multiCastCooldown || 0;
     state.boatSettings    = { ...state.boatSettings, ...(d.boatSettings || {}) };
     state.flags           = { ...state.flags, ...d.flags };
+    state.catalogCaught   = { ...state.catalogCaught, ...(d.catalogCaught || {}) };
     cv.fish = []; cv.hook = null; cv.cooldown = 0;
     updateZoneOverlay();
     applyFlagsToDOM();
     updateAllGoldDisplays();
-    addLog('> SAVE LOADED.');
     return true;
   } catch {
-    addLog('> [ERROR] INVALID SAVE CODE.');
     return false;
   }
 }
@@ -2460,12 +2634,13 @@ function applyFlagsToDOM() {
   if (f.shopUnlocked)     showBubble('btn-shop', false);
   if (f.upgradesUnlocked) showBubble('btn-upgrades', !f.upgradesVisited);
   if (f.atlasUnlocked)    showBubble('btn-atlas', !f.atlasVisited);
-  if (f.logUnlocked)      showBubble('btn-log', !f.logVisited);
   if (f.boatUnlocked)     showBubble('btn-boat', !f.boatVisited);
+  if (f.catalogUnlocked)  showBubble('btn-catalog', false);
   if (f.saveUnlocked)     document.getElementById('fishing-save-btns').classList.add('visible');
   if (f.baitVisible) {
     const b = document.getElementById('btn-bait');
     b.style.display = 'flex';
+    if (!f.baitUsed) { b.classList.add('pulse-new'); addGuideArrow(b, 'right'); }
   }
   if (f.multiCastVisible) {
     const mc = document.getElementById('btn-multicast');
@@ -2474,9 +2649,7 @@ function applyFlagsToDOM() {
   if (f.consumablesSidebar) {
     const sidebar = document.getElementById('consumables-sidebar');
     if (sidebar) sidebar.classList.add('visible');
-    // Don't auto-open on load — user can toggle
   }
-  if (state.stats.totalCaught >= 1) document.getElementById('fishing-gold').classList.add('visible');
   renderConsumablesPanel();
 }
 
@@ -2494,14 +2667,14 @@ document.getElementById('consumables-toggle').addEventListener('click', () => {
 document.getElementById('btn-shop').addEventListener('click',     () => switchScreen('screen-shop'));
 document.getElementById('btn-upgrades').addEventListener('click', () => switchScreen('screen-upgrades'));
 document.getElementById('btn-atlas').addEventListener('click',    () => switchScreen('screen-atlas'));
-document.getElementById('btn-log').addEventListener('click',      () => switchScreen('screen-log'));
 document.getElementById('btn-boat').addEventListener('click',     () => switchScreen('screen-boat'));
+document.getElementById('btn-catalog').addEventListener('click', () => switchScreen('screen-catalog'));
 
-document.getElementById('btn-back-shop').addEventListener('click',     () => { document.getElementById('btn-back-shop').classList.remove('pulse-hint'); switchScreen('screen-fishing'); });
-document.getElementById('btn-back-upgrades').addEventListener('click', () => switchScreen('screen-fishing'));
+document.getElementById('btn-back-shop').addEventListener('click',     () => { const b = document.getElementById('btn-back-shop'); b.classList.remove('pulse-hint'); const a = b.querySelector('.guide-arrow'); if (a) a.remove(); switchScreen('screen-fishing'); });
+document.getElementById('btn-back-upgrades').addEventListener('click', () => { document.getElementById('btn-back-upgrades').classList.remove('pulse-hint'); switchScreen('screen-fishing'); });
 document.getElementById('btn-back-atlas').addEventListener('click',    () => switchScreen('screen-fishing'));
-document.getElementById('btn-back-log').addEventListener('click',      () => switchScreen('screen-fishing'));
 document.getElementById('btn-back-boat').addEventListener('click',     () => switchScreen('screen-fishing'));
+document.getElementById('btn-back-catalog').addEventListener('click', () => switchScreen('screen-fishing'));
 
 document.getElementById('btn-bait').addEventListener('click', () => { document.getElementById('btn-bait').classList.remove('pulse-new'); useBait(); });
 document.getElementById('btn-multicast').addEventListener('click', () => { document.getElementById('btn-multicast').classList.remove('pulse-new'); useMultiCast(); });
@@ -2534,12 +2707,20 @@ document.getElementById('modal-import-btn').addEventListener('click',  () => {
 // ─── Dev mode ───
 let _devBuffer = '';
 document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    if (!document.getElementById('screen-fishing').classList.contains('active')) {
+      // Close any open modals first
+      document.getElementById('save-modal').style.display = 'none';
+      document.getElementById('load-modal').style.display = 'none';
+      switchScreen('screen-fishing');
+    }
+    return;
+  }
   if (e.key.length === 1) {
     _devBuffer = (_devBuffer + e.key.toLowerCase()).slice(-7);
     if (_devBuffer === 'ajmemes') {
-      state.gold += 100;
+      state.gold += 500;
       updateAllGoldDisplays();
-      addLog('> [DEV] +100◈ GRANTED. Someone left the keys in the boat.');
       checkMilestones();
       _devBuffer = '';
     }
