@@ -9,27 +9,34 @@
 </head>
 <body>
 
+  <!-- ══ TITLE SCREEN ══ -->
+  <div id="screen-title" class="title-screen">
+    <canvas id="title-canvas"></canvas>
+    <div class="title-content">
+      <div class="title-name">UNTITLED OCEAN IDLE</div>
+      <div class="title-author">A Game by Alex Wilcox</div>
+      <button id="btn-enter" class="title-enter-btn">ENTER THE WATER?</button>
+    </div>
+    <button id="btn-title-import" class="title-import-btn">IMPORT SAVE</button>
+  </div>
+
   <!-- ══ SCREEN: FISHING ══ -->
-  <div id="screen-fishing" class="screen active">
+  <div id="screen-fishing" class="screen">
     <div id="fishing-hud">
       <div id="fishing-hud-left">
         <span id="fishing-zone-label"></span>
+      </div>
+      <span id="fishing-title">UNTITLED OCEAN IDLE</span>
+      <div id="fishing-hud-right">
         <div id="fishing-save-btns">
           <button class="save-tb-btn" id="btn-save">EXPORT</button>
           <button class="save-tb-btn" id="btn-load">IMPORT</button>
         </div>
-      </div>
-      <span id="fishing-title">UNTITLED OCEAN IDLE</span>
-      <div id="fishing-hud-right">
-        <span id="fishing-gold">◈ <strong id="gold-fishing">0</strong></span>
+        <button class="save-tb-btn" id="btn-menu" disabled title="MENU (coming soon)">☰</button>
       </div>
     </div>
 
     <div id="canvas-wrap">
-      <div id="consumables-sidebar">
-        <button id="consumables-toggle" title="CONSUMABLES">▶</button>
-        <div id="consumables-panel"></div>
-      </div>
       <canvas id="game-canvas"></canvas>
       <div id="ability-bar">
         <button id="btn-bait" class="ability-btn" style="display:none" title="BAIT">B</button>
@@ -41,12 +48,35 @@
       </div>
     </div>
 
+    <div id="gold-float">◈ <strong id="gold-fishing">0</strong></div>
     <div id="fishing-nav">
-      <button id="btn-shop"     class="bubble-btn" style="display:none">FISHMONGER'S REFUGE</button>
-      <button id="btn-upgrades" class="bubble-btn" style="display:none">THE LAB</button>
-      <button id="btn-atlas"    class="bubble-btn" style="display:none">THE ATLAS</button>
-      <button id="btn-boat"     class="bubble-btn" style="display:none">THE SUB</button>
-      <button id="btn-catalog"  class="bubble-btn" style="display:none">THE CATALOG</button>
+      <div id="nav-left">
+        <div id="consumables-bar"></div>
+      </div>
+      <div id="nav-center">
+        <div id="auto-hook-bar" style="display:none">
+          <div class="auto-hook-row">
+            <label class="toggle-switch" id="auto-hook-toggle-wrap">
+              <input type="checkbox" id="auto-hook-checkbox">
+              <span class="toggle-slider"></span>
+            </label>
+            <span id="auto-hook-label" class="auto-hook-nav-label">AUTO</span>
+          </div>
+          <span id="auto-hook-timer" class="auto-hook-timer" style="display:none"></span>
+        </div>
+        <button id="btn-shop"     class="bubble-btn" style="display:none">FISHMONGER'S REFUGE</button>
+        <button id="btn-upgrades" class="bubble-btn" style="display:none">THE LAB</button>
+        <button id="btn-atlas"    class="bubble-btn" style="display:none">THE ATLAS</button>
+        <button id="btn-boat"     class="bubble-btn" style="display:none">THE BOAT</button>
+        <button id="btn-catalog"  class="bubble-btn" style="display:none">THE CATALOG</button>
+      </div>
+      <div id="nav-right">
+        <button id="btn-place-net" class="net-nav-btn" style="display:none" title="PLACE NET">NET</button>
+      </div>
+    </div>
+    <div id="pause-overlay" style="display:none">
+      <div class="pause-text">PAUSED</div>
+      <div class="pause-sub">MAXIMIZE WINDOW TO RESUME</div>
     </div>
   </div>
 
@@ -60,7 +90,6 @@
     <div id="shop-content" class="screen-content">
       <div id="shop-layout">
         <div id="shop-left">
-          <div id="shop-passive-info" style="display:none"></div>
           <button id="btn-sell-all" class="sell-all-btn">[ SELL ALL ]</button>
           <div id="inventory-grid"></div>
         </div>
@@ -100,7 +129,7 @@
   <div id="screen-boat" class="screen">
     <div class="screen-topbar">
       <button class="back-btn" id="btn-back-boat">← RETURN TO WATER</button>
-      <span class="screen-title">THE SUB</span>
+      <span class="screen-title">THE BOAT</span>
       <span class="gold-display">◈ <strong id="gold-boat">0</strong></span>
     </div>
     <div id="boat-content" class="screen-content">
@@ -153,6 +182,12 @@
     </div>
   </div>
 
-  <script src="game.js"></script>
+  <script src="data.js"></script>
+  <script src="state.js"></script>
+  <script src="canvas.js"></script>
+  <script src="fish.js"></script>
+  <script src="ui.js"></script>
+  <script src="save.js"></script>
+  <script src="main.js"></script>
 </body>
 </html>
