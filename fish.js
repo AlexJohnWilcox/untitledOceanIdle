@@ -10,7 +10,7 @@ function getSpawnPool(zoneId) {
   // Add extra coast fish to zone 0 spawn pool
   if (zoneId === 0) {
     fish.push('coast_clownfish', 'coast_puffer');
-    weights.push(25, 18);
+    weights.push(20, 12);
   }
 
   // Bleedthrough from previous 2 zones
@@ -27,22 +27,22 @@ function getSpawnPool(zoneId) {
   }
 
   // Item 18: luck_boost adjusts weights
-  const luckLevel = state.upgrades.luck_boost || 0;
+  const luckLevel = getUpgradeLevel('luck_boost');
   if (luckLevel > 0) {
     for (let i = 0; i < fish.length; i++) {
       const def = FISH[fish[i]];
-      if (def.rarity === 'COMMON') weights[i] *= Math.max(0.4, 1 - luckLevel * 0.04);
-      else if (def.rarity === 'UNCOMMON') weights[i] *= Math.max(0.6, 1 - luckLevel * 0.02);
-      else if (def.rarity === 'RARE') weights[i] *= (1 + luckLevel * 0.06);
-      else if (def.rarity === 'EPIC') weights[i] *= (1 + luckLevel * 0.08);
-      else if (def.rarity === 'LEGENDARY') weights[i] *= (1 + luckLevel * 0.10);
+      if (def.rarity === 'COMMON') weights[i] *= Math.max(0.5, 1 - luckLevel * 0.012);
+      else if (def.rarity === 'UNCOMMON') weights[i] *= Math.max(0.6, 1 - luckLevel * 0.008);
+      else if (def.rarity === 'RARE') weights[i] *= (1 + luckLevel * 0.02);
+      else if (def.rarity === 'EPIC') weights[i] *= (1 + luckLevel * 0.03);
+      else if (def.rarity === 'LEGENDARY') weights[i] *= (1 + luckLevel * 0.035);
     }
   }
 
   return { fish, weights };
 }
 
-function spawnFish() {
+function spawnFish(force) {
   const zone    = ZONES[state.currentZone];
   if (!zone.implemented) return;
   const pool    = getSpawnPool(state.currentZone);
@@ -56,9 +56,9 @@ function spawnFish() {
   const sizeScale  = 0.7 + Math.random() * 0.6;
   const def = FISH[typeId];
   let speedScale = 0.8 + Math.random() * 0.4;
-  if (def.rarity === 'LEGENDARY') speedScale *= 3.0;
+  if (def.rarity === 'LEGENDARY') speedScale *= Math.max(0.5, 3.0 - (state.upgrades.legendary_slow || 0) * 0.45);
   else if (def.rarity === 'EPIC') speedScale *= 1.8;
-  const golden = Math.random() < 0.01;
+  const golden = state.treasureChestTimer > 0 ? true : Math.random() < 0.01;
   // Fish drift: slight vertical movement as fish crosses screen
   const driftRate = (Math.random() - 0.35) * 12; // slightly biased downward
   cv.fish.push({
@@ -83,7 +83,7 @@ function spawnBubble() {
 }
 
 function throwNet(cx, cy, typeId) {
-  const def = CONSUMABLES_DEF.find(c => c.id === typeId);
+  const def = CONSUMABLES_MAP[typeId];
   if (!def || (state.consumables[typeId] || 0) <= 0) return;
   state.consumables[typeId]--;
   // Keep net mode active if player still has nets of this type (#10)
@@ -94,8 +94,7 @@ function throwNet(cx, cy, typeId) {
   cv.nets.push({ x: cx, y: cy, radius, timer: 1.4, maxTimer: 1.4 });
   for (const f of cv.fish) {
     if (f.caught) continue;
-    const dx = cx - f.x, dy = cy - f.currentY;
-    if (Math.sqrt(dx*dx + dy*dy) < radius) { catchFish(f.id, f.type); }
+    if (dist(cx, f.x, cy, f.currentY) < radius) { catchFish(f.id, f.type); }
   }
 
   audio.play('catch_rare');
@@ -105,8 +104,8 @@ function throwNet(cx, cy, typeId) {
 function castHook(tx, ty) {
   if (cv.cooldown > 0 || cv.hook) return;
   cv.hook = {
-    x: canvasW / 2, y: canvasH + 10,
-    ox: canvasW / 2, oy: canvasH + 10,
+    x: canvasW / 2, y: canvasH - 30,
+    ox: canvasW / 2, oy: canvasH - 30,
     tx, ty, state: 'traveling', lingerTimer: 0,
   };
   state.stats.totalCasts++;
@@ -126,8 +125,8 @@ function castHook(tx, ty) {
       setTimeout(() => {
         if (cv.cooldown > 0) return;
         const extraHook = {
-          x: canvasW / 2, y: canvasH + 10,
-          ox: canvasW / 2, oy: canvasH + 10,
+          x: canvasW / 2, y: canvasH - 30,
+          ox: canvasW / 2, oy: canvasH - 30,
           tx: mtx, ty, state: 'traveling', lingerTimer: 0,
           isExtra: true,
         };
@@ -152,7 +151,15 @@ function catchFish(fishId, typeId) {
     const goldenKey = 'golden_' + typeId;
     state.inventory[goldenKey] = (state.inventory[goldenKey] || 0) + 1;
     state.stats.totalCaught++;
-    cv.catchFlashes.push({ x: fish.x, y: fish.currentY, timer: 2.4, text: `★ GOLDEN ${def.name}!`, color: '#ffee44' });
+    const goldenValue = Math.floor(def.goldValue * 10 * getGoldMultiplier() * (state.sellMultiplier || 1));
+    cv.catchFlashes.push({ x: fish.x, y: fish.currentY, timer: 2.4, text: `★ GOLDEN ${def.name}! ${goldenValue}◈`, color: '#ffee44' });
+    // Auto sell golden fish
+    if (state.flags.autoSellEnabled && state.upgrades.auto_sell > 0) {
+      state.gold += goldenValue;
+      state.totalGoldEarned += goldenValue;
+      state.inventory[goldenKey] = (state.inventory[goldenKey] || 0) - 1;
+      if (state.inventory[goldenKey] <= 0) delete state.inventory[goldenKey];
+    }
     audio.play('catch_rare');
     checkMilestones();
     updateAllGoldDisplays();
@@ -167,7 +174,8 @@ function catchFish(fishId, typeId) {
 
   // "New Fish!" text on first-ever catch
   const isNew = prevCaught === 0;
-  const flashText = isNew ? `✦ NEW FISH! ${def.name} [${rar}]` : `${def.name} [${rar}]`;
+  const fishValue = Math.floor(def.goldValue * getGoldMultiplier() * (state.sellMultiplier || 1));
+  const flashText = isNew ? `✦ NEW FISH! ${def.name} [${rar}] ${fishValue}◈` : `${def.name} [${rar}] ${fishValue}◈`;
   const flashColor = isNew ? '#ffffff' : rc.glow;
   cv.catchFlashes.push({ x: fish.x, y: fish.currentY, timer: isNew ? 2.4 : 1.6, text: flashText, color: flashColor });
 
@@ -184,7 +192,16 @@ function catchFish(fishId, typeId) {
     }
   }
 
-  audio.play(rar === 'COMMON' ? 'catch_common' : 'catch_rare');
+  // Auto sell: immediately sell the fish if enabled
+  if (state.flags.autoSellEnabled && state.upgrades.auto_sell > 0) {
+    const sellValue = def.goldValue * getGoldMultiplier() * (state.sellMultiplier || 1);
+    state.gold += sellValue;
+    state.totalGoldEarned += sellValue;
+    state.inventory[typeId] = (state.inventory[typeId] || 0) - 1;
+    if (state.inventory[typeId] <= 0) delete state.inventory[typeId];
+  }
+
+  audio.play(rar === 'EPIC' || rar === 'LEGENDARY' ? 'catch_rare' : 'catch_common');
   checkMilestones();
   updateAllGoldDisplays();
 }
@@ -192,8 +209,7 @@ function catchFish(fishId, typeId) {
 function checkHookCollision(hx, hy) {
   for (const f of cv.fish) {
     if (f.caught) continue;
-    const dx = hx - f.x, dy = hy - f.currentY;
-    if (Math.sqrt(dx * dx + dy * dy) < getCatchRadius(f.type) + FISH[f.type].size * 0.55) {
+    if (dist(hx, f.x, hy, f.currentY) < getCatchRadius(f.type) + FISH[f.type].size * 0.55) {
       catchFish(f.id, f.type);
     }
   }
@@ -230,15 +246,44 @@ function clickCrab(cx, cy) {
   const rock = COAST_ROCKS[c.rockIdx];
   const rx = rock.fx * canvasW;
   const ry = canvasH * rock.fy - 18 - 12 + (1 - c.peekAnim) * 40;
-  if (Math.sqrt((cx - rx) ** 2 + (cy - ry) ** 2) < 34) {
+  if (dist(cx, rx, cy, ry) < 34) {
+    const golden = Math.random() < 0.01;
+    const crabDef = FISH['shore_crab'];
+    if (golden) {
+      const goldenKey = 'golden_shore_crab';
+      state.inventory[goldenKey] = (state.inventory[goldenKey] || 0) + 1;
+      state.stats.totalCaught++;
+      const goldenValue = Math.floor(crabDef.goldValue * 10 * getGoldMultiplier() * (state.sellMultiplier || 1));
+      if (state.flags.autoSellEnabled && state.upgrades.auto_sell > 0) {
+        state.gold += goldenValue;
+        state.totalGoldEarned += goldenValue;
+        state.inventory[goldenKey] = (state.inventory[goldenKey] || 0) - 1;
+        if (state.inventory[goldenKey] <= 0) delete state.inventory[goldenKey];
+      }
+      cv.catchFlashes.push({ x: rx, y: ry, timer: 2.4, text: `★ GOLDEN SHORE CRAB! ${goldenValue}◈`, color: '#ffee44' });
+      audio.play('catch_rare');
+      c.active = false;
+      c.spawnTimer = 30 + Math.random() * 45;
+      checkMilestones();
+      updateAllGoldDisplays();
+      return true;
+    }
     state.inventory['shore_crab'] = (state.inventory['shore_crab'] || 0) + 1;
     state.catalogCaught['shore_crab'] = (state.catalogCaught['shore_crab'] || 0) + 1;
     state.stats.totalCaught++;
-    cv.catchFlashes.push({ x: rx, y: ry, timer: 1.6, text: 'SHORE CRAB [RARE]', color: RARITY_COLORS.RARE.glow });
+    const crabValue = Math.floor(crabDef.goldValue * getGoldMultiplier() * (state.sellMultiplier || 1));
+    if (state.flags.autoSellEnabled && state.upgrades.auto_sell > 0) {
+      state.gold += crabValue;
+      state.totalGoldEarned += crabValue;
+      state.inventory['shore_crab'] = (state.inventory['shore_crab'] || 0) - 1;
+      if (state.inventory['shore_crab'] <= 0) delete state.inventory['shore_crab'];
+    }
+    cv.catchFlashes.push({ x: rx, y: ry, timer: 1.6, text: `SHORE CRAB [RARE] ${crabValue}◈`, color: RARITY_COLORS.RARE.glow });
     audio.play('catch_rare');
     c.active = false;
     c.spawnTimer = 30 + Math.random() * 45;
     checkMilestones();
+    updateAllGoldDisplays();
     return true;
   }
   return false;
@@ -269,15 +314,9 @@ function updateZoneSpecial(obj, dt) {
 
 function clickZoneSpecial(cx, cy) {
   if (state.currentZone === 0) return clickCrab(cx, cy);
-  if (state.currentZone === 1) return clickSpecial(cv.starfish, 'tide_starfish', cx, cy);
-  if (state.currentZone === 2) return clickSpecial(cv.sandDollar, 'buried_dollar', cx, cy);
-  if (state.currentZone === 3) return clickSpecial(cv.reefUrchin, 'reef_urchin', cx, cy);
-  if (state.currentZone === 4) return clickSpecial(cv.coralPearl, 'coral_pearl', cx, cy);
-  if (state.currentZone === 5) return clickSpecial(cv.sandFossil, 'sand_fossil', cx, cy);
-  if (state.currentZone === 6) return clickSpecial(cv.mineGem, 'mine_gem', cx, cy);
-  if (state.currentZone === 7) return clickSpecial(cv.looseTooth, 'loose_tooth', cx, cy);
-  if (state.currentZone === 8) return clickSpecial(cv.cityRelic, 'city_relic', cx, cy);
-  if (state.currentZone === 9) return clickSpecial(cv.wallShard, 'wall_shard', cx, cy);
+  const ZONE_CLICK_MAP = [null, [cv.starfish, 'tide_starfish'], [cv.sandDollar, 'buried_dollar'], [cv.reefUrchin, 'reef_urchin'], [cv.coralPearl, 'coral_pearl'], [cv.sandFossil, 'sand_fossil'], [cv.mineGem, 'mine_gem'], [cv.looseTooth, 'loose_tooth'], [cv.cityRelic, 'city_relic'], [cv.wallShard, 'wall_shard'], [cv.abyssCrystal, 'abyss_crystal'], [cv.passageKey, 'passage_key'], [cv.sirenScale, 'siren_scale'], [cv.twilightOrb, 'twilight_orb'], [cv.trenchBone, 'trench_bone']];
+  const entry = ZONE_CLICK_MAP[state.currentZone];
+  if (entry) return clickSpecial(entry[0], entry[1], cx, cy);
   return false;
 }
 
@@ -285,16 +324,44 @@ function clickSpecial(obj, typeId, cx, cy) {
   if (!obj.active || obj.peekAnim < 0.3) return false;
   const rx = obj.fx * canvasW;
   const ry = obj.fy * canvasH;
-  if (Math.sqrt((cx - rx) ** 2 + (cy - ry) ** 2) < 36) {
+  if (dist(cx, rx, cy, ry) < 36) {
     const def = FISH[typeId];
+    const golden = Math.random() < 0.01;
+    if (golden) {
+      const goldenKey = 'golden_' + typeId;
+      state.inventory[goldenKey] = (state.inventory[goldenKey] || 0) + 1;
+      state.stats.totalCaught++;
+      const goldenValue = Math.floor(def.goldValue * 10 * getGoldMultiplier() * (state.sellMultiplier || 1));
+      if (state.flags.autoSellEnabled && state.upgrades.auto_sell > 0) {
+        state.gold += goldenValue;
+        state.totalGoldEarned += goldenValue;
+        state.inventory[goldenKey] = (state.inventory[goldenKey] || 0) - 1;
+        if (state.inventory[goldenKey] <= 0) delete state.inventory[goldenKey];
+      }
+      cv.catchFlashes.push({ x: rx, y: ry, timer: 2.4, text: `★ GOLDEN ${def.name}! ${goldenValue}◈`, color: '#ffee44' });
+      audio.play('catch_rare');
+      obj.active = false;
+      obj.spawnTimer = 35 + Math.random() * 45;
+      checkMilestones();
+      updateAllGoldDisplays();
+      return true;
+    }
     state.inventory[typeId] = (state.inventory[typeId] || 0) + 1;
     state.catalogCaught[typeId] = (state.catalogCaught[typeId] || 0) + 1;
     state.stats.totalCaught++;
-    cv.catchFlashes.push({ x: rx, y: ry, timer: 1.6, text: `${def.name} [RARE]`, color: RARITY_COLORS.RARE.glow });
+    const specValue = Math.floor(def.goldValue * getGoldMultiplier() * (state.sellMultiplier || 1));
+    if (state.flags.autoSellEnabled && state.upgrades.auto_sell > 0) {
+      state.gold += specValue;
+      state.totalGoldEarned += specValue;
+      state.inventory[typeId] = (state.inventory[typeId] || 0) - 1;
+      if (state.inventory[typeId] <= 0) delete state.inventory[typeId];
+    }
+    cv.catchFlashes.push({ x: rx, y: ry, timer: 1.6, text: `${def.name} [RARE] ${specValue}◈`, color: RARITY_COLORS.RARE.glow });
     audio.play('catch_rare');
     obj.active = false;
     obj.spawnTimer = 35 + Math.random() * 45;
     checkMilestones();
+    updateAllGoldDisplays();
     return true;
   }
   return false;

@@ -28,6 +28,19 @@ const cv = {
   nets: [],
   placedNets: [],
   ships: [], shipTimer: 15,
+  abyssCrystal: { active: false, fx: 0, fy: 0, peekAnim: 0, peekDir: 0, lingerTimer: 0, spawnTimer: 50 },
+  passageKey: { active: false, fx: 0, fy: 0, peekAnim: 0, peekDir: 0, lingerTimer: 0, spawnTimer: 55 },
+  sirenScale: { active: false, fx: 0, fy: 0, peekAnim: 0, peekDir: 0, lingerTimer: 0, spawnTimer: 50 },
+  twilightOrb: { active: false, fx: 0, fy: 0, peekAnim: 0, peekDir: 0, lingerTimer: 0, spawnTimer: 55 },
+  trenchBone: { active: false, fx: 0, fy: 0, peekAnim: 0, peekDir: 0, lingerTimer: 0, spawnTimer: 60 },
+  blackFish: {
+    active: false, phase: 'none', // 'fading_in' | 'visible' | 'fading_out'
+    x: 0, y: 0, alpha: 0,
+    phaseTimer: 0, spawnTimer: 60 + Math.random() * 90,
+    dir: 1, wobbleOffset: 0,
+  },
+  harpoon: null, // { x, y, tx, ty, ox, oy, state: 'traveling'|'retracting' }
+  bossHitFlashes: [],
 };
 
 function resizeCanvas() {
@@ -103,6 +116,21 @@ function draw() {
   } else if (state.currentZone === 9) {
     drawSeawallBackground();
     if (cv.wallShard && cv.wallShard.active) drawClickWallShard(cv.wallShard);
+  } else if (state.currentZone === 10) {
+    drawAbyssBackground();
+    if (cv.abyssCrystal && cv.abyssCrystal.active) drawClickAbyssCrystal(cv.abyssCrystal);
+  } else if (state.currentZone === 11) {
+    drawHiddenPassageBackground();
+    if (cv.passageKey && cv.passageKey.active) drawClickPassageKey(cv.passageKey);
+  } else if (state.currentZone === 12) {
+    drawMermaidsLairBackground();
+    if (cv.sirenScale && cv.sirenScale.active) drawClickSirenScale(cv.sirenScale);
+  } else if (state.currentZone === 13) {
+    drawTwilightDepthsBackground();
+    if (cv.twilightOrb && cv.twilightOrb.active) drawClickTwilightOrb(cv.twilightOrb);
+  } else if (state.currentZone === 14) {
+    drawMidnightTrenchBackground();
+    if (cv.trenchBone && cv.trenchBone.active) drawClickTrenchBone(cv.trenchBone);
   }
 
   if (cv.screenShake.x !== 0 || cv.screenShake.y !== 0) {
@@ -115,14 +143,38 @@ function draw() {
     ctx.strokeStyle = `rgba(0,255,136,${b.opacity})`; ctx.lineWidth = 0.5; ctx.stroke();
   }
 
-  for (const pn of cv.placedNets) drawPlacedNet(pn);
-  if (cv.inCanvas && !cv.hook && cv.cooldown <= 0) drawReticle(cv.mouseX, cv.mouseY);
-  for (const f of cv.fish) drawFish(f);
-  if (cv.hook) drawHook(cv.hook);
-  if (cv.extraHooks) for (const eh of cv.extraHooks) drawHook(eh);
-  for (const net of cv.nets) drawNet(net);
+  // Boss fight mode
+  if (state.bossFight) {
+    drawBoss();
+    if (cv.harpoon) drawHarpoon(cv.harpoon);
+    drawBossHUD();
+    for (const fl of cv.bossHitFlashes) {
+      const alpha = Math.min(1, fl.timer * 2);
+      const rise = (0.8 - fl.timer) * 40;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.font = 'bold 15px "Space Mono",monospace';
+      ctx.fillStyle = '#ff4444'; ctx.shadowColor = '#ff4444'; ctx.shadowBlur = 14;
+      ctx.textAlign = 'center';
+      ctx.fillText(fl.text, fl.x, fl.y - rise);
+      ctx.restore();
+    }
+  } else {
+    for (const pn of cv.placedNets) drawPlacedNet(pn);
+    if (cv.inCanvas && !cv.hook && cv.cooldown <= 0) drawReticle(cv.mouseX, cv.mouseY);
+    for (const f of cv.fish) drawFish(f);
+    if (cv.hook) drawHook(cv.hook);
+    if (cv.extraHooks) for (const eh of cv.extraHooks) drawHook(eh);
+    for (const net of cv.nets) drawNet(net);
+  }
+
+  // Black fish
+  if (cv.blackFish.active && !state.bossFight) drawBlackFish();
 
   if (cv.screenShake.x !== 0 || cv.screenShake.y !== 0) ctx.restore();
+
+  // Rod hub semi-circle at bottom center
+  drawRodHub();
 
   for (const fl of cv.catchFlashes) {
     const alpha = Math.min(1, fl.timer * 1.3);
@@ -136,9 +188,9 @@ function draw() {
     ctx.restore();
   }
 
-  if (cv.cooldown > 0) {
+  if (cv.cooldown > 0 && !state.bossFight) {
     const frac = cv.cooldown / getRecastCooldown();
-    const bw = 160, bx = canvasW / 2 - bw / 2, by = canvasH - 52;
+    const bw = 160, bx = canvasW / 2 - bw / 2, by = canvasH - 78;
     ctx.fillStyle = '#001a08'; ctx.fillRect(bx, by, bw, 7);
     ctx.shadowColor = '#00ff88'; ctx.shadowBlur = 6;
     ctx.fillStyle = '#00ff88'; ctx.fillRect(bx, by, bw * (1 - frac), 7);
@@ -157,11 +209,311 @@ function draw() {
     ctx.restore();
   }
 
+  // Black fish effect timers
+  let effectY = 48;
+  if (state.fishmongerBoonTimer > 0) {
+    ctx.save();
+    ctx.font = 'bold 13px "Space Mono"';
+    ctx.fillStyle = '#ffcc44'; ctx.shadowColor = '#ffcc44'; ctx.shadowBlur = 12;
+    ctx.textAlign = 'center';
+    ctx.fillText(`◈ FISHMONGER'S BOON ${(state.sellMultiplier || 1).toFixed(1)}x: ${Math.ceil(state.fishmongerBoonTimer)}s`, canvasW / 2, effectY);
+    ctx.restore();
+    effectY += 20;
+  }
+  if (state.treasureChestTimer > 0) {
+    ctx.save();
+    ctx.font = 'bold 13px "Space Mono"';
+    ctx.fillStyle = '#ffee44'; ctx.shadowColor = '#ffee44'; ctx.shadowBlur = 12;
+    ctx.textAlign = 'center';
+    ctx.fillText(`★ TREASURE CHEST: ${Math.ceil(state.treasureChestTimer)}s`, canvasW / 2, effectY);
+    ctx.restore();
+    effectY += 20;
+  }
+  if (state.labSaleTimer > 0) {
+    ctx.save();
+    ctx.font = 'bold 13px "Space Mono"';
+    ctx.fillStyle = '#bb77ff'; ctx.shadowColor = '#bb77ff'; ctx.shadowBlur = 12;
+    ctx.textAlign = 'center';
+    ctx.fillText(`⬡ LAB SALE -30%: ${Math.ceil(state.labSaleTimer)}s`, canvasW / 2, effectY);
+    ctx.restore();
+  }
+
 }
 
 // ═══════════════════════════════════════════════════════════════
 //  FISH DRAWING
 // ═══════════════════════════════════════════════════════════════
+
+function drawBlackFish() {
+  const bf = cv.blackFish;
+  const bx = bf.x * canvasW;
+  const by = bf.y * canvasH;
+  const wobbleY = Math.sin(bf.wobbleOffset) * 8;
+  const wobbleX = Math.cos(bf.wobbleOffset * 0.7) * 4;
+  const fx = bx + wobbleX;
+  const fy = by + wobbleY;
+  const sz = 22;
+
+  ctx.save();
+  ctx.globalAlpha = bf.alpha * 0.85;
+
+  // Dark aura
+  const pulse = 0.5 + Math.sin(currentT * 3) * 0.3;
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.shadowColor = '#220033';
+  ctx.shadowBlur = 30 + pulse * 15;
+  ctx.beginPath();
+  ctx.arc(fx, fy, sz * 2.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Fish body — dark silhouette
+  ctx.shadowColor = '#4400aa';
+  ctx.shadowBlur = 18;
+  ctx.fillStyle = '#0a0010';
+  ctx.translate(fx, fy);
+  ctx.scale(bf.dir, 1);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, sz, sz * 0.45, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Tail
+  ctx.beginPath();
+  ctx.moveTo(-sz * 0.85, 0);
+  ctx.lineTo(-sz * 1.6, -sz * 0.45);
+  ctx.lineTo(-sz * 1.6, sz * 0.45);
+  ctx.closePath();
+  ctx.fill();
+
+  // Eye — glowing purple
+  ctx.shadowColor = '#aa44ff';
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = '#aa44ff';
+  ctx.beginPath();
+  ctx.arc(sz * 0.4, -sz * 0.08, sz * 0.14, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Inner eye
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(sz * 0.42, -sz * 0.1, sz * 0.06, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  BOSS DRAWING
+// ═══════════════════════════════════════════════════════════════
+
+function drawBoss() {
+  const bf = state.bossFight;
+  if (!bf) return;
+  const boss = bf.bossData;
+  const bx = bf.x;
+  const by = bf.y + Math.sin(bf.wobble) * 12;
+  const sz = boss.size;
+
+  ctx.save();
+
+  // Aura
+  const pulse = 0.4 + Math.sin(currentT * 2) * 0.2;
+  ctx.fillStyle = boss.color + '15';
+  ctx.shadowColor = boss.color;
+  ctx.shadowBlur = 40 + pulse * 20;
+  ctx.beginPath();
+  ctx.arc(bx, by, sz * 1.8, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Body
+  ctx.shadowBlur = 20;
+  ctx.fillStyle = boss.color + 'cc';
+  ctx.translate(bx, by);
+  ctx.scale(bf.dir, 1);
+
+  // Main body ellipse
+  ctx.beginPath();
+  ctx.ellipse(0, 0, sz, sz * 0.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Head plate
+  ctx.fillStyle = boss.color;
+  ctx.beginPath();
+  ctx.ellipse(sz * 0.5, 0, sz * 0.35, sz * 0.4, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Tail
+  ctx.fillStyle = boss.color + 'aa';
+  ctx.beginPath();
+  ctx.moveTo(-sz * 0.8, 0);
+  ctx.lineTo(-sz * 1.5, -sz * 0.5);
+  ctx.quadraticCurveTo(-sz * 1.7, 0, -sz * 1.5, sz * 0.5);
+  ctx.closePath();
+  ctx.fill();
+
+  // Dorsal fin
+  ctx.beginPath();
+  ctx.moveTo(-sz * 0.2, -sz * 0.45);
+  ctx.lineTo(sz * 0.1, -sz * 0.85);
+  ctx.lineTo(sz * 0.4, -sz * 0.4);
+  ctx.closePath();
+  ctx.fill();
+
+  // Eye
+  ctx.shadowColor = '#ffffff';
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(sz * 0.55, -sz * 0.1, sz * 0.12, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#110022';
+  ctx.beginPath();
+  ctx.arc(sz * 0.57, -sz * 0.1, sz * 0.06, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Teeth/spikes
+  ctx.fillStyle = boss.color;
+  ctx.shadowBlur = 0;
+  for (let i = 0; i < 4; i++) {
+    const tx = sz * 0.7 + i * 4;
+    ctx.beginPath();
+    ctx.moveTo(tx, sz * 0.15);
+    ctx.lineTo(tx + 3, sz * 0.3);
+    ctx.lineTo(tx - 2, sz * 0.3);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  ctx.restore();
+
+  // Hit flash (white overlay on damage)
+  if (bf.hitFlash > 0) {
+    ctx.save();
+    ctx.globalAlpha = bf.hitFlash * 0.5;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.ellipse(bx, by, sz * 1.2, sz * 0.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawBossHUD() {
+  const bf = state.bossFight;
+  if (!bf) return;
+  const boss = bf.bossData;
+
+  // Health bar at top
+  const barW = Math.min(canvasW * 0.6, 500);
+  const barH = 16;
+  const barX = (canvasW - barW) / 2;
+  const barY = 20;
+  const hpFrac = bf.hp / bf.maxHp;
+
+  // Background
+  ctx.fillStyle = '#0a0a0a';
+  ctx.strokeStyle = boss.color + '88';
+  ctx.lineWidth = 2;
+  ctx.fillRect(barX, barY, barW, barH);
+  ctx.strokeRect(barX, barY, barW, barH);
+
+  // Fill
+  const grad = ctx.createLinearGradient(barX, barY, barX + barW * hpFrac, barY);
+  grad.addColorStop(0, boss.color);
+  grad.addColorStop(1, boss.color + '88');
+  ctx.fillStyle = grad;
+  ctx.fillRect(barX + 1, barY + 1, (barW - 2) * hpFrac, barH - 2);
+
+  // Glow
+  ctx.shadowColor = boss.color;
+  ctx.shadowBlur = 10;
+  ctx.fillRect(barX + 1, barY + 1, (barW - 2) * hpFrac, barH - 2);
+  ctx.shadowBlur = 0;
+
+  // Boss name
+  ctx.save();
+  ctx.font = 'bold 12px "Space Mono",monospace';
+  ctx.fillStyle = boss.color;
+  ctx.shadowColor = boss.color;
+  ctx.shadowBlur = 8;
+  ctx.textAlign = 'center';
+  ctx.fillText(boss.name, canvasW / 2, barY - 5);
+  ctx.restore();
+
+  // HP text
+  ctx.save();
+  ctx.font = '10px "Space Mono",monospace';
+  ctx.fillStyle = '#aaaaaa';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${Math.ceil(bf.hp)} / ${bf.maxHp}`, canvasW / 2, barY + barH + 14);
+  ctx.restore();
+
+  // Timer
+  ctx.save();
+  const timerColor = bf.timer <= 10 ? '#ff4444' : '#ffcc44';
+  ctx.font = 'bold 14px "Space Mono",monospace';
+  ctx.fillStyle = timerColor;
+  ctx.shadowColor = timerColor;
+  ctx.shadowBlur = 10;
+  ctx.font = 'bold 28px "Space Mono",monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${Math.ceil(bf.timer)}s`, canvasW / 2, canvasH / 2);
+  ctx.restore();
+}
+
+function drawHarpoon(h) {
+  ctx.save();
+  const angle = Math.atan2(h.ty - h.oy, h.tx - h.ox);
+
+  ctx.translate(h.x, h.y);
+  ctx.rotate(angle);
+
+  // Shaft
+  ctx.strokeStyle = '#aaaaaa';
+  ctx.lineWidth = 3;
+  ctx.shadowColor = '#ffaa44';
+  ctx.shadowBlur = 6;
+  ctx.beginPath();
+  ctx.moveTo(-20, 0);
+  ctx.lineTo(10, 0);
+  ctx.stroke();
+
+  // Harpoon head
+  ctx.fillStyle = '#ffaa44';
+  ctx.beginPath();
+  ctx.moveTo(14, 0);
+  ctx.lineTo(6, -5);
+  ctx.lineTo(8, 0);
+  ctx.lineTo(6, 5);
+  ctx.closePath();
+  ctx.fill();
+
+  // Barbs
+  ctx.strokeStyle = '#ffaa44';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(6, -5);
+  ctx.lineTo(2, -2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(6, 5);
+  ctx.lineTo(2, 2);
+  ctx.stroke();
+
+  ctx.restore();
+
+  // Trail line
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,170,68,0.3)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(h.ox, h.oy);
+  ctx.lineTo(h.x, h.y);
+  ctx.stroke();
+  ctx.restore();
+}
 
 function drawFish(f) {
   // Golden fish: draw pulsing outer aura before the fish itself
@@ -217,13 +569,8 @@ function fishTransform(f) {
   return { alpha, sc, golden: f.golden };
 }
 
-function goldenRC(f, rc) {
-  // Golden fish keep their original colors - only the aura circle marks them
-  return rc;
-}
-
 function drawDefaultFish(f) {
-  const def = FISH[f.type], rc = goldenRC(f, RARITY_COLORS[def.rarity]), sz = def.size;
+  const def = FISH[f.type], rc = RARITY_COLORS[def.rarity], sz = def.size;
   const { alpha } = fishTransform(f);
   ctx.shadowColor = rc.glow; ctx.shadowBlur = 14; ctx.fillStyle = rc.color;
   ctx.beginPath(); ctx.ellipse(0, 0, sz, sz * 0.43, 0, 0, Math.PI * 2); ctx.fill();
@@ -243,7 +590,7 @@ function drawDefaultFish(f) {
 }
 
 function drawSlim(f) {
-  const def = FISH[f.type], rc = goldenRC(f, RARITY_COLORS[def.rarity]), sz = def.size;
+  const def = FISH[f.type], rc = RARITY_COLORS[def.rarity], sz = def.size;
   fishTransform(f);
   ctx.shadowColor = rc.glow; ctx.shadowBlur = 10; ctx.fillStyle = rc.color;
   ctx.beginPath(); ctx.ellipse(0, 0, sz * 1.2, sz * 0.28, 0, 0, Math.PI * 2); ctx.fill();
@@ -256,7 +603,7 @@ function drawSlim(f) {
 }
 
 function drawJaw(f) {
-  const def = FISH[f.type], rc = goldenRC(f, RARITY_COLORS[def.rarity]), sz = def.size;
+  const def = FISH[f.type], rc = RARITY_COLORS[def.rarity], sz = def.size;
   fishTransform(f);
   ctx.shadowColor = rc.glow; ctx.shadowBlur = 14; ctx.fillStyle = rc.color;
   ctx.beginPath(); ctx.ellipse(0, 0, sz, sz * 0.5, 0, 0, Math.PI * 2); ctx.fill();
@@ -273,7 +620,7 @@ function drawJaw(f) {
 }
 
 function drawEel(f) {
-  const def = FISH[f.type], rc = goldenRC(f, RARITY_COLORS[def.rarity]), sz = def.size;
+  const def = FISH[f.type], rc = RARITY_COLORS[def.rarity], sz = def.size;
   const alpha = f.caught ? Math.max(0, 1 - f.catchAnim) : 1;
   const yOff  = f.caught ? -f.catchAnim * 36 : 0;
   const baseSc = f.sizeScale || 1;
@@ -299,7 +646,7 @@ function drawEel(f) {
 }
 
 function drawShark(f) {
-  const def = FISH[f.type], rc = goldenRC(f, RARITY_COLORS[def.rarity]), sz = def.size;
+  const def = FISH[f.type], rc = RARITY_COLORS[def.rarity], sz = def.size;
   const { alpha } = fishTransform(f);
   ctx.shadowColor = rc.glow; ctx.shadowBlur = 16; ctx.fillStyle = rc.color;
   ctx.beginPath(); ctx.ellipse(0, 0, sz * 1.4, sz * 0.38, 0, 0, Math.PI * 2); ctx.fill();
@@ -327,7 +674,7 @@ function drawShark(f) {
 }
 
 function drawBlob(f) {
-  const def = FISH[f.type], rc = goldenRC(f, RARITY_COLORS[def.rarity]), sz = def.size;
+  const def = FISH[f.type], rc = RARITY_COLORS[def.rarity], sz = def.size;
   const { alpha } = fishTransform(f);
   ctx.shadowColor = rc.glow; ctx.shadowBlur = 18; ctx.fillStyle = rc.color;
   ctx.beginPath(); ctx.arc(0, 0, sz, 0, Math.PI * 2); ctx.fill();
@@ -350,7 +697,7 @@ function drawBlob(f) {
 }
 
 function drawFlat(f) {
-  const def = FISH[f.type], rc = goldenRC(f, RARITY_COLORS[def.rarity]), sz = def.size;
+  const def = FISH[f.type], rc = RARITY_COLORS[def.rarity], sz = def.size;
   const { alpha } = fishTransform(f);
   ctx.shadowColor = rc.glow; ctx.shadowBlur = 12; ctx.fillStyle = rc.color;
   ctx.beginPath(); ctx.ellipse(0, 0, sz * 1.3, sz * 0.22, 0, 0, Math.PI * 2); ctx.fill();
@@ -368,7 +715,7 @@ function drawFlat(f) {
 
 // ── Item 15: Clown fish shape ──
 function drawClown(f) {
-  const def = FISH[f.type], rc = goldenRC(f, RARITY_COLORS[def.rarity]), sz = def.size;
+  const def = FISH[f.type], rc = RARITY_COLORS[def.rarity], sz = def.size;
   const { alpha } = fishTransform(f);
   ctx.shadowColor = rc.glow; ctx.shadowBlur = 12;
   // body - orange with white stripes (golden override)
@@ -395,7 +742,7 @@ function drawClown(f) {
 
 // ── Item 15: Puffer fish shape ──
 function drawPuffer(f) {
-  const def = FISH[f.type], rc = goldenRC(f, RARITY_COLORS[def.rarity]), sz = def.size;
+  const def = FISH[f.type], rc = RARITY_COLORS[def.rarity], sz = def.size;
   const { alpha } = fishTransform(f);
   ctx.shadowColor = rc.glow; ctx.shadowBlur = 14;
   // round puffy body
@@ -428,7 +775,7 @@ function drawPuffer(f) {
 
 // ── Item 15: Swimming crab shape (for blister_crab) ──
 function drawCrabFish(f) {
-  const def = FISH[f.type], rc = goldenRC(f, RARITY_COLORS[def.rarity]), sz = def.size;
+  const def = FISH[f.type], rc = RARITY_COLORS[def.rarity], sz = def.size;
   const { alpha } = fishTransform(f);
   ctx.shadowColor = rc.glow; ctx.shadowBlur = 12;
   // body
@@ -458,6 +805,38 @@ function drawCrabFish(f) {
 //  HOOK / RETICLE / NET DRAWING
 // ═══════════════════════════════════════════════════════════════
 
+function drawRodHub() {
+  const cx = canvasW / 2;
+  const cy = canvasH;
+  const rw = 60, rh = 34;
+  ctx.save();
+  // Dark filled semi-circle
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rw, rh, 0, Math.PI, 0);
+  ctx.closePath();
+  const hubGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, rw);
+  hubGrad.addColorStop(0, '#041a0c');
+  hubGrad.addColorStop(1, '#010a04');
+  ctx.fillStyle = hubGrad;
+  ctx.fill();
+  // Border arc
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rw, rh, 0, Math.PI, 0);
+  ctx.strokeStyle = '#007744';
+  ctx.lineWidth = 1.5;
+  ctx.shadowColor = '#00ff88';
+  ctx.shadowBlur = 8;
+  ctx.stroke();
+  // Small rod tip indicator dot
+  ctx.beginPath();
+  ctx.arc(cx, cy - rh + 4, 3, 0, Math.PI * 2);
+  ctx.fillStyle = '#00ff88';
+  ctx.shadowColor = '#00ff88';
+  ctx.shadowBlur = 12;
+  ctx.fill();
+  ctx.restore();
+}
+
 function drawHook(h) {
   const hx = h.x;
   const hy = h.y;
@@ -484,7 +863,7 @@ function drawHook(h) {
 function drawReticle(mx, my) {
   ctx.save();
   const ac = state.activeConsumable;
-  const netDef = ac && (ac === 'small_net' || ac === 'big_net') ? CONSUMABLES_DEF.find(c => c.id === ac) : null;
+  const netDef = ac && (ac === 'small_net' || ac === 'big_net') ? CONSUMABLES_MAP[ac] : null;
 
   if (ac === 'place_net') {
     const r = getNetRadius();
@@ -515,7 +894,7 @@ function drawReticle(mx, my) {
 
   ctx.strokeStyle = 'rgba(0,255,136,0.16)'; ctx.lineWidth = 1;
   ctx.setLineDash([5, 9]);
-  ctx.beginPath(); ctx.moveTo(canvasW/2, canvasH); ctx.lineTo(mx, my); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(canvasW/2, canvasH - 30); ctx.lineTo(mx, my); ctx.stroke();
   ctx.setLineDash([]);
   ctx.strokeStyle = 'rgba(0,255,136,0.07)'; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.arc(mx, my, getCatchRadius(), 0, Math.PI*2); ctx.stroke();
@@ -571,967 +950,8 @@ function drawPlacedNet(pn) {
   ctx.restore();
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  COAST ZONE DRAWING
-// ═══════════════════════════════════════════════════════════════
-
-function drawCoastBackground() {
-  const sandY = canvasH * COAST_SAND_LEVEL;
-  const t = currentT;
-
-  ctx.save();
-  for (let i = 0; i < 5; i++) {
-    const rx = canvasW * (0.08 + i * 0.21 + Math.sin(t * 0.22 + i * 1.4) * 0.03);
-    const w  = canvasW * 0.065;
-    const rayGrad = ctx.createLinearGradient(rx, 0, rx, sandY);
-    rayGrad.addColorStop(0, 'rgba(80,255,160,0.08)');
-    rayGrad.addColorStop(1, 'rgba(80,255,160,0)');
-    ctx.fillStyle = rayGrad;
-    ctx.beginPath();
-    ctx.moveTo(rx - w * 0.4, 0); ctx.lineTo(rx + w, sandY); ctx.lineTo(rx - w, sandY);
-    ctx.closePath(); ctx.fill();
-  }
-  ctx.restore();
-
-  ctx.save();
-  const sandGrad = ctx.createLinearGradient(0, sandY, 0, canvasH);
-  sandGrad.addColorStop(0, '#141f0d'); sandGrad.addColorStop(1, '#080f06');
-  ctx.fillStyle = sandGrad;
-  ctx.fillRect(0, sandY, canvasW, canvasH - sandY);
-  ctx.restore();
-
-  drawCoral(canvasW * 0.07, sandY, 0.85, '#ff5533', '#ff8855');
-  drawCoral(canvasW * 0.22, sandY, 0.60, '#ff3377', '#ff77aa');
-  drawCoral(canvasW * 0.63, sandY, 0.90, '#ff5533', '#ffaa55');
-  drawCoral(canvasW * 0.88, sandY, 0.70, '#33cc77', '#55ffaa');
-
-  drawSeaweed(canvasW * 0.38, sandY, 55, '#00aa44');
-  drawSeaweed(canvasW * 0.41, sandY, 40, '#008833');
-  drawSeaweed(canvasW * 0.94, sandY, 62, '#00bb55');
-
-  for (const rock of COAST_ROCKS) {
-    drawRock(rock.fx * canvasW, canvasH * rock.fy);
-  }
-
-  drawStarfish(canvasW * 0.32, sandY + 12, 8, '#ff8844');
-  drawStarfish(canvasW * 0.47, sandY + 8,  6, '#ff6622');
-  drawStarfish(canvasW * 0.70, sandY + 14, 9, '#ff9933');
-  drawStarfish(canvasW * 0.90, sandY + 10, 7, '#ffbb44');
-
-  ctx.save();
-  ctx.strokeStyle = 'rgba(0,180,80,0.3)'; ctx.lineWidth = 1.2;
-  for (const [sx, sy] of [[0.2, sandY+16], [0.58, sandY+20], [0.77, sandY+14]]) {
-    for (let i = 0; i < 3; i++) {
-      ctx.beginPath();
-      ctx.arc(canvasW * sx + i * 7, sy, 4, Math.PI, Math.PI * 2);
-      ctx.stroke();
-    }
-  }
-  ctx.restore();
-}
-
-function drawCoral(x, baseY, scale, color1, color2) {
-  ctx.save();
-  ctx.translate(x, baseY);
-  function branch(fx, fy, angle, len, depth) {
-    if (len < 5) return;
-    const tx = fx + Math.cos(angle) * len;
-    const ty = fy - Math.abs(Math.sin(angle)) * len;
-    ctx.strokeStyle = depth > 1 ? color1 : color2;
-    ctx.lineWidth = Math.max(1.5, depth * 2.2);
-    ctx.shadowColor = color2; ctx.shadowBlur = depth * 4;
-    ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(tx, ty); ctx.stroke();
-    if (depth <= 1) {
-      ctx.fillStyle = color2; ctx.shadowBlur = 10;
-      ctx.beginPath(); ctx.arc(tx, ty, 3.5, 0, Math.PI * 2); ctx.fill();
-    }
-    branch(tx, ty, angle + 0.55, len * 0.65, depth - 1);
-    branch(tx, ty, angle - 0.45, len * 0.62, depth - 1);
-  }
-  branch(0, 0, Math.PI / 2, 55 * scale, 3);
-  ctx.restore();
-}
-
-function drawSeaweed(x, baseY, height, color) {
-  ctx.save();
-  ctx.strokeStyle = color; ctx.lineWidth = 3;
-  ctx.shadowColor = color; ctx.shadowBlur = 5;
-  ctx.beginPath(); ctx.moveTo(x, baseY);
-  for (let i = 1; i <= 10; i++) {
-    const p = i / 10;
-    ctx.lineTo(x + Math.sin(currentT * 1.3 + p * 5) * 10 * p, baseY - height * p);
-  }
-  ctx.stroke(); ctx.restore();
-}
-
-function drawRock(x, y) {
-  ctx.save();
-  ctx.fillStyle = '#060e06';
-  ctx.beginPath(); ctx.ellipse(x + 3, y + 6, 34, 16, 0.1, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#0e1e0e'; ctx.shadowColor = '#001a0a'; ctx.shadowBlur = 6;
-  ctx.beginPath(); ctx.ellipse(x, y, 30, 15, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#131f10'; ctx.shadowBlur = 0;
-  ctx.beginPath(); ctx.ellipse(x - 6, y - 5, 17, 8, -0.2, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-}
-
-function drawCrab(x, rockTopY, peekAnim) {
-  const yOff  = (1 - peekAnim) * 40;
-  const alpha = Math.min(1, peekAnim * 3.5);
-  if (alpha <= 0.01) return;
-  const cy = rockTopY - 12 + yOff;
-
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.translate(x, cy);
-
-  ctx.strokeStyle = '#1144aa'; ctx.lineWidth = 2;
-  for (let i = 0; i < 3; i++) {
-    const lx = -6 + i * 6;
-    ctx.beginPath(); ctx.moveTo(lx - 12, 4); ctx.lineTo(lx - 21, 14); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-lx + 12, 4); ctx.lineTo(-lx + 21, 14); ctx.stroke();
-  }
-
-  ctx.fillStyle = '#1155cc'; ctx.shadowColor = '#4499ff'; ctx.shadowBlur = 18;
-  ctx.beginPath(); ctx.ellipse(0, 0, 15, 10, 0, 0, Math.PI * 2); ctx.fill();
-
-  ctx.shadowBlur = 8;
-  ctx.beginPath(); ctx.ellipse(-22, -4, 7, 5, -0.3, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(22, -4, 7, 5, 0.3, 0, Math.PI * 2); ctx.fill();
-
-  ctx.shadowBlur = 0; ctx.strokeStyle = '#1155cc'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(-5, -10); ctx.lineTo(-5, -17); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(5, -10); ctx.lineTo(5, -17); ctx.stroke();
-
-  ctx.fillStyle = '#000a22';
-  ctx.beginPath(); ctx.arc(-5, -17, 3.5, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(5, -17, 3.5, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#22aaff';
-  ctx.beginPath(); ctx.arc(-5, -17, 1.8, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(5, -17, 1.8, 0, Math.PI * 2); ctx.fill();
-
-  ctx.restore();
-}
-
-function drawStarfish(x, y, r, color) {
-  ctx.save();
-  ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 8;
-  ctx.translate(x, y);
-  ctx.rotate(currentT * 0.05);
-  ctx.beginPath();
-  for (let i = 0; i < 5; i++) {
-    const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
-    const b = a + Math.PI / 5;
-    ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
-    ctx.lineTo(Math.cos(b) * r * 0.42, Math.sin(b) * r * 0.42);
-  }
-  ctx.closePath(); ctx.fill();
-  ctx.restore();
-}
-
-function drawClickStarfish(obj) {
-  const alpha = Math.min(1, obj.peekAnim * 3);
-  if (alpha <= 0.01) return;
-  const x = obj.fx * canvasW;
-  const y = obj.fy * canvasH + (1 - obj.peekAnim) * 20;
-  // Item 16: platform rock
-  ctx.save();
-  ctx.globalAlpha = alpha * 0.8;
-  ctx.fillStyle = '#0c1a0c';
-  ctx.beginPath(); ctx.ellipse(x, y + 16, 22, 10, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#ff6644';
-  ctx.shadowColor = '#ff8866';
-  ctx.shadowBlur = 12;
-  ctx.translate(x, y);
-  ctx.rotate(Math.sin(currentT * 0.5) * 0.1);
-  ctx.beginPath();
-  for (let i = 0; i < 5; i++) {
-    const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
-    const b = a + Math.PI / 5;
-    ctx.lineTo(Math.cos(a) * 14, Math.sin(a) * 14);
-    ctx.lineTo(Math.cos(b) * 6, Math.sin(b) * 6);
-  }
-  ctx.closePath(); ctx.fill();
-  ctx.restore();
-}
-
-function drawClickSandDollar(obj) {
-  const alpha = Math.min(1, obj.peekAnim * 3);
-  if (alpha <= 0.01) return;
-  const x = obj.fx * canvasW;
-  const y = obj.fy * canvasH + (1 - obj.peekAnim) * 15;
-  // Item 16: platform rock
-  ctx.save();
-  ctx.globalAlpha = alpha * 0.8;
-  ctx.fillStyle = '#131508';
-  ctx.beginPath(); ctx.ellipse(x, y + 14, 20, 9, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#997755';
-  ctx.shadowColor = '#bbaa88';
-  ctx.shadowBlur = 10;
-  ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#bbaa88'; ctx.lineWidth = 1;
-  for (let i = 0; i < 5; i++) {
-    const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x + Math.cos(a) * 10, y + Math.sin(a) * 10);
-    ctx.stroke();
-  }
-  ctx.restore();
-}
-
-function drawWaterSurface(y) {
-  const t = currentT;
-  ctx.save();
-  ctx.shadowColor = '#44ffbb'; ctx.shadowBlur = 8;
-  ctx.strokeStyle = 'rgba(80,255,180,0.5)'; ctx.lineWidth = 2;
-  ctx.beginPath();
-  for (let x = 0; x <= canvasW; x += 4) {
-    const wy = y + Math.sin(x * 0.025 + t * 1.1) * 3 + Math.sin(x * 0.06 + t * 0.7) * 1.5;
-    x === 0 ? ctx.moveTo(x, wy) : ctx.lineTo(x, wy);
-  }
-  ctx.stroke();
-  ctx.strokeStyle = 'rgba(80,255,180,0.18)'; ctx.lineWidth = 1; ctx.shadowBlur = 0;
-  ctx.beginPath();
-  for (let x = 0; x <= canvasW; x += 4) {
-    const wy = y + 7 + Math.sin(x * 0.04 + t * 0.85 + 1.5) * 2;
-    x === 0 ? ctx.moveTo(x, wy) : ctx.lineTo(x, wy);
-  }
-  ctx.stroke();
-  ctx.restore();
-}
-
-function drawShip(ship) {
-  ctx.save();
-  ctx.translate(ship.x, ship.y);
-  ctx.scale(ship.dir * ship.size, ship.size);
-  ctx.fillStyle = 'rgba(0,15,8,0.85)';
-  ctx.shadowColor = '#002211'; ctx.shadowBlur = 6;
-  ctx.beginPath();
-  ctx.moveTo(-55, 0); ctx.lineTo(-48, 12); ctx.lineTo(55, 12); ctx.lineTo(62, 0); ctx.closePath(); ctx.fill();
-  ctx.fillRect(-18, -18, 38, 18);
-  ctx.fillStyle = 'rgba(0,20,10,0.95)';
-  ctx.fillRect(-1, -46, 3, 28);
-  ctx.fillStyle = 'rgba(0,15,8,0.85)';
-  ctx.fillRect(-8, -30, 18, 12);
-  ctx.restore();
-}
-
-// ─── Zone 1: The Shallows ───────────────────────────────────────
-function drawShallowsBackground() {
-  const sandY = canvasH * 0.87;
-  const t = currentT;
-
-  ctx.save();
-  const sg = ctx.createLinearGradient(0, sandY, 0, canvasH);
-  sg.addColorStop(0, '#16200e'); sg.addColorStop(1, '#0a1208');
-  ctx.fillStyle = sg; ctx.fillRect(0, sandY, canvasW, canvasH - sandY);
-  ctx.restore();
-
-  ctx.save();
-  ctx.strokeStyle = 'rgba(0,180,80,0.07)'; ctx.lineWidth = 1;
-  for (let i = 0; i < 5; i++) {
-    const ry = sandY + 10 + i * 16;
-    ctx.beginPath();
-    for (let x = 0; x < canvasW; x += 4) {
-      const y = ry + Math.sin(x * 0.06 + t * 0.4 + i) * 3;
-      i === 0 && x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-  }
-  ctx.restore();
-
-  drawSeaweed(canvasW * 0.12, sandY, 45, '#007733');
-  drawSeaweed(canvasW * 0.15, sandY, 32, '#006622');
-  drawSeaweed(canvasW * 0.55, sandY, 50, '#008844');
-  drawSeaweed(canvasW * 0.72, sandY, 38, '#007733');
-  drawSeaweed(canvasW * 0.75, sandY, 26, '#005522');
-
-  ctx.save();
-  ctx.fillStyle = '#0c1a0c'; ctx.shadowColor = '#001a0a'; ctx.shadowBlur = 4;
-  ctx.beginPath(); ctx.ellipse(canvasW * 0.28, sandY + 8, 18, 9, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(canvasW * 0.68, sandY + 6, 14, 7, 0.2, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(canvasW * 0.88, sandY + 10, 22, 11, -0.1, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-
-  for (const ax of [0.3, 0.7, 0.9]) {
-    drawAnemone(canvasW * ax, sandY, '#88ffcc');
-  }
-
-  // Item 16: floating particles (non-catchable decor)
-  ctx.save();
-  for (let i = 0; i < 8; i++) {
-    const px = (canvasW * ((i * 0.618 + 0.05) % 1.0));
-    const py = ((currentT * 12 * (0.4 + (i % 3) * 0.2) + i * canvasH / 8) % (canvasH * 0.8));
-    const alpha = 0.08 + Math.abs(Math.sin(currentT * 0.6 + i)) * 0.15;
-    ctx.fillStyle = `rgba(100,255,200,${alpha})`;
-    ctx.beginPath(); ctx.arc(px, py, 1.5, 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.restore();
-}
-
-function drawAnemone(x, baseY, color) {
-  ctx.save();
-  ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.shadowColor = color; ctx.shadowBlur = 6;
-  const t = currentT;
-  for (let i = 0; i < 7; i++) {
-    const angle = (i / 7) * Math.PI * 2;
-    const len = 14 + Math.sin(t * 1.5 + i) * 5;
-    const wx  = Math.sin(t * 1.2 + i * 0.8) * 4;
-    ctx.beginPath();
-    ctx.moveTo(x, baseY);
-    ctx.quadraticCurveTo(x + wx, baseY - len * 0.6, x + Math.cos(angle) * 8, baseY - len);
-    ctx.stroke();
-    ctx.fillStyle = color; ctx.shadowBlur = 8;
-    ctx.beginPath(); ctx.arc(x + Math.cos(angle) * 8, baseY - len, 2.5, 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.restore();
-}
-
-// ─── Zone 2: The Sandbank ───────────────────────────────────────
-function drawSandbankBackground() {
-  const sandY = canvasH * 0.82;
-  const t = currentT;
-
-  ctx.save();
-  const sg = ctx.createLinearGradient(0, sandY, 0, canvasH);
-  sg.addColorStop(0, '#181a09'); sg.addColorStop(1, '#0a0d04');
-  ctx.fillStyle = sg; ctx.fillRect(0, sandY, canvasW, canvasH - sandY);
-  ctx.restore();
-
-  ctx.save();
-  ctx.fillStyle = '#131508';
-  for (let i = 0; i < 4; i++) {
-    const dx = canvasW * (0.1 + i * 0.25);
-    ctx.beginPath();
-    ctx.ellipse(dx, sandY + 2, canvasW * 0.12, 22, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
-
-  for (const cx of [0.08, 0.35, 0.62, 0.91]) {
-    drawCrystal(canvasW * cx, sandY);
-  }
-
-  ctx.save();
-  ctx.fillStyle = 'rgba(0,80,30,0.25)'; ctx.shadowColor = '#00ff44'; ctx.shadowBlur = 12;
-  for (let i = 0; i < 6; i++) {
-    const bx = canvasW * (0.05 + i * 0.18);
-    ctx.beginPath();
-    ctx.ellipse(bx, sandY + 28, 20 + Math.sin(i * 2.3) * 8, 14, Math.sin(i) * 0.5, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
-
-  // Item 16: floating sand particles
-  ctx.save();
-  for (let i = 0; i < 12; i++) {
-    const px = (canvasW * ((i * 0.37 + 0.12) % 1.0));
-    const py = ((currentT * 8 * (0.3 + (i % 4) * 0.15) + i * canvasH / 12) % (canvasH * 0.75));
-    const alpha = 0.06 + Math.abs(Math.sin(currentT * 0.5 + i * 1.3)) * 0.12;
-    ctx.fillStyle = `rgba(180,160,80,${alpha})`;
-    ctx.beginPath(); ctx.arc(px, py, 1 + (i % 3) * 0.5, 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.restore();
-}
-
-function drawCrystal(x, baseY) {
-  ctx.save();
-  ctx.translate(x, baseY);
-  ctx.fillStyle = 'rgba(100,200,120,0.3)'; ctx.shadowColor = '#44ff88'; ctx.shadowBlur = 10;
-  ctx.strokeStyle = 'rgba(100,255,150,0.5)'; ctx.lineWidth = 1;
-  const heights = [28, 18, 22, 14];
-  const offsets = [-10, -3, 5, 12];
-  for (let i = 0; i < heights.length; i++) {
-    const h = heights[i], ox = offsets[i];
-    ctx.beginPath();
-    ctx.moveTo(ox, 0);
-    ctx.lineTo(ox - 4, -h); ctx.lineTo(ox + 4, -h);
-    ctx.closePath(); ctx.fill(); ctx.stroke();
-  }
-  ctx.restore();
-}
-
-// ─── Zone 3: The Reef ──────────────────────────────────────────
-function drawReefBackground() {
-  const t = currentT;
-  const baseY = canvasH * 0.84;
-
-  // Sea floor
-  const floorGrad = ctx.createLinearGradient(0, baseY - 10, 0, canvasH);
-  floorGrad.addColorStop(0, '#0a160a'); floorGrad.addColorStop(1, '#040a04');
-  ctx.fillStyle = floorGrad;
-  ctx.fillRect(0, baseY - 10, canvasW, canvasH - baseY + 10);
-
-  // Reef formations growing from floor
-  ctx.save();
-  ctx.fillStyle = '#080c08';
-  for (let i = 0; i < 7; i++) {
-    const rx = canvasW * (0.05 + i * 0.14);
-    const rh = 30 + Math.sin(i * 1.7) * 18;
-    ctx.beginPath();
-    ctx.moveTo(rx - 22, canvasH);
-    ctx.lineTo(rx - 22, baseY + 10);
-    ctx.lineTo(rx - 10, baseY - rh);
-    ctx.lineTo(rx, baseY - rh - 12);
-    ctx.lineTo(rx + 10, baseY - rh + 4);
-    ctx.lineTo(rx + 22, baseY + 10);
-    ctx.lineTo(rx + 22, canvasH);
-    ctx.closePath(); ctx.fill();
-  }
-  ctx.restore();
-
-  // Glowing particles
-  ctx.save();
-  const particleCount = 22;
-  for (let i = 0; i < particleCount; i++) {
-    const px = (canvasW * ((i * 0.618 + 0.1) % 1.0));
-    const py = ((t * 18 * (0.5 + (i % 3) * 0.3) + i * (canvasH / particleCount)) % (canvasH * 0.78));
-    const alpha = 0.15 + Math.abs(Math.sin(t * 0.8 + i)) * 0.35;
-    const r = 1 + (i % 3) * 0.8;
-    ctx.fillStyle = `rgba(0,255,136,${alpha})`;
-    ctx.shadowColor = '#00ff88'; ctx.shadowBlur = 8;
-    ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.restore();
-
-  // Branching coral structures
-  ctx.save();
-  ctx.strokeStyle = 'rgba(0,120,60,0.4)'; ctx.lineWidth = 2; ctx.shadowColor = '#00ff44'; ctx.shadowBlur = 6;
-  for (let i = 0; i < 5; i++) {
-    const bx = canvasW * (0.1 + i * 0.2);
-    ctx.beginPath();
-    ctx.moveTo(bx, baseY);
-    ctx.lineTo(bx + Math.sin(i * 2) * 8, baseY - 35);
-    ctx.lineTo(bx + Math.sin(i * 2) * 8 - 10, baseY - 50);
-    ctx.moveTo(bx + Math.sin(i * 2) * 8, baseY - 35);
-    ctx.lineTo(bx + Math.sin(i * 2) * 8 + 10, baseY - 48);
-    ctx.stroke();
-  }
-  ctx.restore();
-}
-
-// ─── Zone 4: The Coral Sprawl ────────────────────────────────────
-function drawCoralSprawlBackground() {
-  const t = currentT;
-  const baseY = canvasH * 0.82;
-
-  // Deep coral gradient
-  const bg2 = ctx.createLinearGradient(0, 0, 0, canvasH);
-  bg2.addColorStop(0, '#1a0808'); bg2.addColorStop(0.5, '#0d0404'); bg2.addColorStop(1, '#060202');
-  ctx.fillStyle = bg2; ctx.fillRect(0, 0, canvasW, canvasH);
-
-  // Grid
-  ctx.strokeStyle = '#220808'; ctx.lineWidth = 0.5;
-  for (let x = 50; x < canvasW; x += 50) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvasH); ctx.stroke(); }
-  for (let y = 50; y < canvasH; y += 50) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvasW,y); ctx.stroke(); }
-
-  // Coral floor
-  ctx.save();
-  const sg = ctx.createLinearGradient(0, baseY, 0, canvasH);
-  sg.addColorStop(0, '#1a0d08'); sg.addColorStop(1, '#0a0504');
-  ctx.fillStyle = sg; ctx.fillRect(0, baseY, canvasW, canvasH - baseY);
-  ctx.restore();
-
-  // Large coral formations
-  for (const cx of [0.1, 0.3, 0.5, 0.7, 0.9]) {
-    drawCoral(canvasW * cx, baseY, 0.9 + Math.sin(cx * 5) * 0.3, '#ff4422', '#ff8844');
-  }
-  for (const cx of [0.2, 0.6, 0.85]) {
-    drawCoral(canvasW * cx, baseY, 0.7, '#ff2266', '#ff66aa');
-  }
-
-  // Bioluminescent particles
-  ctx.save();
-  for (let i = 0; i < 18; i++) {
-    const px = (canvasW * ((i * 0.618 + 0.05) % 1.0));
-    const py = ((t * 10 * (0.3 + (i % 4) * 0.15) + i * canvasH / 18) % (canvasH * 0.78));
-    const alpha = 0.1 + Math.abs(Math.sin(t * 0.7 + i * 1.1)) * 0.25;
-    const colors = ['rgba(255,100,68,', 'rgba(255,50,100,', 'rgba(255,150,80,'];
-    ctx.fillStyle = colors[i % 3] + alpha + ')';
-    ctx.shadowColor = '#ff6644'; ctx.shadowBlur = 8;
-    ctx.beginPath(); ctx.arc(px, py, 1.5, 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.restore();
-
-  // Anemones
-  for (const ax of [0.15, 0.45, 0.75]) {
-    drawAnemone(canvasW * ax, baseY, '#ff8866');
-  }
-}
-
-// ─── Zone 5: The Sand Dunes ─────────────────────────────────────
-function drawSandDunesBackground() {
-  const t = currentT;
-  const baseY = canvasH * 0.78;
-
-  // Deeper, more dramatic gradient
-  const bg2 = ctx.createLinearGradient(0, 0, 0, canvasH);
-  bg2.addColorStop(0, '#1a1205'); bg2.addColorStop(0.3, '#0d0802'); bg2.addColorStop(0.7, '#080501'); bg2.addColorStop(1, '#040300');
-  ctx.fillStyle = bg2; ctx.fillRect(0, 0, canvasW, canvasH);
-
-  ctx.strokeStyle = '#1a1408'; ctx.lineWidth = 0.5;
-  for (let x = 50; x < canvasW; x += 50) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvasH); ctx.stroke(); }
-  for (let y = 50; y < canvasH; y += 50) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvasW,y); ctx.stroke(); }
-
-  // Background dune layer (distant, subtle)
-  ctx.save();
-  ctx.fillStyle = '#0e0c04';
-  ctx.beginPath(); ctx.moveTo(0, canvasH);
-  for (let x = 0; x <= canvasW; x += 4) {
-    const dy = Math.sin(x * 0.005 + 0.8) * 40 + Math.sin(x * 0.012 + 2.5) * 20;
-    ctx.lineTo(x, baseY - 30 + dy);
-  }
-  ctx.lineTo(canvasW, canvasH); ctx.closePath(); ctx.fill();
-  ctx.restore();
-
-  // Foreground dune layer - rolling hills with slow drift
-  ctx.save();
-  const sg = ctx.createLinearGradient(0, baseY - 40, 0, canvasH);
-  sg.addColorStop(0, '#221a08'); sg.addColorStop(0.3, '#1a1508'); sg.addColorStop(1, '#0a0b04');
-  ctx.fillStyle = sg;
-  ctx.beginPath(); ctx.moveTo(0, canvasH);
-  for (let x = 0; x <= canvasW; x += 4) {
-    const dy = Math.sin(x * 0.008 + t * 0.08) * 30 + Math.sin(x * 0.02 + 1.5) * 15 + Math.sin(x * 0.035 + 3.0) * 8;
-    ctx.lineTo(x, baseY + dy);
-  }
-  ctx.lineTo(canvasW, canvasH); ctx.closePath(); ctx.fill();
-  ctx.restore();
-
-  // Sand streams - horizontal particle currents
-  ctx.save();
-  ctx.globalAlpha = 0.15;
-  for (let i = 0; i < 4; i++) {
-    const sy = canvasH * (0.25 + i * 0.15);
-    const streamGrad = ctx.createLinearGradient(0, sy, canvasW, sy);
-    streamGrad.addColorStop(0, 'transparent');
-    streamGrad.addColorStop(0.3, 'rgba(200,170,60,0.08)');
-    streamGrad.addColorStop(0.7, 'rgba(200,170,60,0.12)');
-    streamGrad.addColorStop(1, 'transparent');
-    ctx.fillStyle = streamGrad;
-    ctx.fillRect(0, sy - 3 + Math.sin(t * 0.3 + i) * 5, canvasW, 6);
-  }
-  ctx.restore();
-
-  // Sand particles drifting (more particles, more dramatic)
-  ctx.save();
-  for (let i = 0; i < 35; i++) {
-    const px = ((t * (12 + i % 5 * 3) + i * canvasW / 35 + Math.sin(i * 2.1) * 40) % (canvasW + 40)) - 20;
-    const py = canvasH * 0.15 + (i * canvasH * 0.65 / 35) + Math.sin(t * 0.5 + i) * 12;
-    const alpha = 0.05 + Math.abs(Math.sin(t * 0.4 + i * 1.5)) * 0.12;
-    ctx.fillStyle = `rgba(220,180,60,${alpha})`;
-    ctx.shadowColor = '#ccaa44'; ctx.shadowBlur = 4;
-    ctx.beginPath(); ctx.arc(px, py, 1 + (i % 3) * 0.5, 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.restore();
-
-  // Crystals poking out of dunes
-  for (const cx of [0.08, 0.25, 0.42, 0.58, 0.75, 0.92]) {
-    drawCrystal(canvasW * cx, baseY + Math.sin(cx * 8) * 15);
-  }
-
-  // Glowing heat vents
-  ctx.save();
-  for (let i = 0; i < 3; i++) {
-    const vx = canvasW * (0.2 + i * 0.3);
-    const vy = baseY + Math.sin(vx * 0.01) * 15 + 5;
-    const pulse = 0.3 + Math.sin(t * 1.5 + i * 2) * 0.2;
-    ctx.fillStyle = `rgba(255,140,40,${pulse})`;
-    ctx.shadowColor = '#ff8800'; ctx.shadowBlur = 20;
-    ctx.beginPath(); ctx.arc(vx, vy, 5, 0, Math.PI * 2); ctx.fill();
-    // Rising heat particles
-    for (let j = 0; j < 4; j++) {
-      const hx = vx + Math.sin(t * 2 + j * 1.5) * 8;
-      const hy = vy - 10 - ((t * 20 + j * 15) % 40);
-      const ha = Math.max(0, 0.3 - ((t * 20 + j * 15) % 40) / 50);
-      ctx.fillStyle = `rgba(255,160,60,${ha})`;
-      ctx.beginPath(); ctx.arc(hx, hy, 1.5, 0, Math.PI * 2); ctx.fill();
-    }
-  }
-  ctx.restore();
-}
-
-// ─── Zone 6: The Old Mine ───────────────────────────────────────
-function drawOldMineBackground() {
-  const t = currentT;
-  const baseY = canvasH * 0.85;
-
-  const bg2 = ctx.createLinearGradient(0, 0, 0, canvasH);
-  bg2.addColorStop(0, '#0a0a10'); bg2.addColorStop(0.5, '#060608'); bg2.addColorStop(1, '#030304');
-  ctx.fillStyle = bg2; ctx.fillRect(0, 0, canvasW, canvasH);
-
-  ctx.strokeStyle = '#0a0a14'; ctx.lineWidth = 0.5;
-  for (let x = 50; x < canvasW; x += 50) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvasH); ctx.stroke(); }
-  for (let y = 50; y < canvasH; y += 50) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvasW,y); ctx.stroke(); }
-
-  // Mine shaft walls
-  ctx.save();
-  ctx.fillStyle = '#0c0c12';
-  ctx.fillRect(0, baseY, canvasW, canvasH - baseY);
-  // Support beams
-  ctx.strokeStyle = '#1a1a22'; ctx.lineWidth = 4;
-  for (let i = 0; i < 5; i++) {
-    const bx = canvasW * (0.1 + i * 0.2);
-    ctx.beginPath(); ctx.moveTo(bx, baseY); ctx.lineTo(bx, baseY - 60); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(bx - 30, baseY - 58); ctx.lineTo(bx + 30, baseY - 58); ctx.stroke();
-  }
-  ctx.restore();
-
-  // Rail tracks on the floor
-  ctx.save();
-  ctx.strokeStyle = '#1a1a28'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(0, baseY + 15); ctx.lineTo(canvasW, baseY + 15); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(0, baseY + 25); ctx.lineTo(canvasW, baseY + 25); ctx.stroke();
-  // Ties
-  ctx.lineWidth = 3;
-  for (let x = 0; x < canvasW; x += 35) {
-    ctx.beginPath(); ctx.moveTo(x, baseY + 12); ctx.lineTo(x, baseY + 28); ctx.stroke();
-  }
-  ctx.restore();
-
-  // Glowing ore veins
-  ctx.save();
-  for (let i = 0; i < 8; i++) {
-    const ox = canvasW * ((i * 0.618 + 0.05) % 1.0);
-    const oy = canvasH * (0.15 + (i % 4) * 0.18);
-    const alpha = 0.15 + Math.abs(Math.sin(t * 0.6 + i * 2)) * 0.3;
-    ctx.fillStyle = `rgba(136,136,170,${alpha})`;
-    ctx.shadowColor = '#8888aa'; ctx.shadowBlur = 12;
-    ctx.beginPath(); ctx.arc(ox, oy, 3, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = `rgba(136,136,170,${alpha * 0.5})`; ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(ox, oy);
-    ctx.lineTo(ox + Math.cos(i * 1.3) * 20, oy + Math.sin(i * 1.3) * 15);
-    ctx.stroke();
-  }
-  ctx.restore();
-}
-
-// ─── Zone 7: The Shark Den ──────────────────────────────────────
-function drawSharkDenBackground() {
-  const t = currentT;
-  const baseY = canvasH * 0.88;
-
-  const bg2 = ctx.createLinearGradient(0, 0, 0, canvasH);
-  bg2.addColorStop(0, '#1a0505'); bg2.addColorStop(0.5, '#0d0303'); bg2.addColorStop(1, '#050101');
-  ctx.fillStyle = bg2; ctx.fillRect(0, 0, canvasW, canvasH);
-
-  ctx.strokeStyle = '#1a0505'; ctx.lineWidth = 0.5;
-  for (let x = 50; x < canvasW; x += 50) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvasH); ctx.stroke(); }
-  for (let y = 50; y < canvasH; y += 50) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvasW,y); ctx.stroke(); }
-
-  // Rocky cave walls
-  ctx.save();
-  ctx.fillStyle = '#0a0404';
-  for (let i = 0; i < 8; i++) {
-    const rx = canvasW * (0.04 + i * 0.13);
-    const rh = 40 + Math.sin(i * 2.1) * 20;
-    ctx.beginPath();
-    ctx.moveTo(rx - 25, baseY + 10);
-    ctx.lineTo(rx - 12, baseY - rh);
-    ctx.lineTo(rx + 5, baseY - rh - 8);
-    ctx.lineTo(rx + 15, baseY - rh + 6);
-    ctx.lineTo(rx + 25, baseY + 10);
-    ctx.closePath(); ctx.fill();
-  }
-  ctx.restore();
-
-  // Teeth/bone fragments on the floor
-  ctx.save();
-  ctx.fillStyle = '#221a1a';
-  for (let i = 0; i < 12; i++) {
-    const tx = canvasW * ((i * 0.37 + 0.05) % 1.0);
-    const ty = baseY + 5 + (i % 3) * 4;
-    ctx.beginPath();
-    ctx.moveTo(tx, ty); ctx.lineTo(tx - 2, ty - 8 - (i % 3) * 3); ctx.lineTo(tx + 2, ty - 8 - (i % 3) * 3);
-    ctx.closePath(); ctx.fill();
-  }
-  ctx.restore();
-
-  // Blood-red particles
-  ctx.save();
-  for (let i = 0; i < 15; i++) {
-    const px = (canvasW * ((i * 0.618 + 0.08) % 1.0));
-    const py = ((t * 8 * (0.4 + (i % 3) * 0.2) + i * canvasH / 15) % (canvasH * 0.8));
-    const alpha = 0.08 + Math.abs(Math.sin(t * 0.5 + i * 1.2)) * 0.15;
-    ctx.fillStyle = `rgba(200,50,50,${alpha})`;
-    ctx.shadowColor = '#cc3333'; ctx.shadowBlur = 6;
-    ctx.beginPath(); ctx.arc(px, py, 1.2, 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.restore();
-}
-
-// ─── Zone 8: The Abandoned City ─────────────────────────────────
-function drawAbandonedCityBackground() {
-  const t = currentT;
-  const baseY = canvasH * 0.86;
-
-  const bg2 = ctx.createLinearGradient(0, 0, 0, canvasH);
-  bg2.addColorStop(0, '#080d14'); bg2.addColorStop(0.5, '#040608'); bg2.addColorStop(1, '#020304');
-  ctx.fillStyle = bg2; ctx.fillRect(0, 0, canvasW, canvasH);
-
-  ctx.strokeStyle = '#0a0d14'; ctx.lineWidth = 0.5;
-  for (let x = 50; x < canvasW; x += 50) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvasH); ctx.stroke(); }
-  for (let y = 50; y < canvasH; y += 50) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvasW,y); ctx.stroke(); }
-
-  // Buildings in background
-  ctx.save();
-  ctx.fillStyle = '#060a10';
-  const buildings = [
-    { x: 0.05, w: 0.08, h: 0.35 }, { x: 0.15, w: 0.06, h: 0.5 },
-    { x: 0.28, w: 0.1, h: 0.4 },  { x: 0.42, w: 0.07, h: 0.55 },
-    { x: 0.55, w: 0.09, h: 0.3 },  { x: 0.68, w: 0.06, h: 0.45 },
-    { x: 0.78, w: 0.08, h: 0.38 }, { x: 0.9, w: 0.07, h: 0.5 },
-  ];
-  for (const b of buildings) {
-    const bx = canvasW * b.x, bw = canvasW * b.w, bh = canvasH * b.h;
-    ctx.fillRect(bx, baseY - bh, bw, bh + 20);
-    // Windows
-    ctx.fillStyle = '#0a1020';
-    for (let wy = baseY - bh + 12; wy < baseY - 10; wy += 18) {
-      for (let wx = bx + 4; wx < bx + bw - 6; wx += 10) {
-        ctx.fillRect(wx, wy, 6, 8);
-        // Random lit window
-        if (Math.sin(wx * 3.7 + wy * 2.1 + t * 0.02) > 0.92) {
-          ctx.save();
-          ctx.fillStyle = 'rgba(100,130,180,0.3)';
-          ctx.shadowColor = '#6688bb'; ctx.shadowBlur = 8;
-          ctx.fillRect(wx, wy, 6, 8);
-          ctx.restore();
-        }
-      }
-    }
-    ctx.fillStyle = '#060a10';
-  }
-  ctx.restore();
-
-  // Floor debris
-  ctx.save();
-  ctx.fillStyle = '#0a0e14';
-  ctx.fillRect(0, baseY, canvasW, canvasH - baseY);
-  ctx.restore();
-
-  // Floating particles (dust/debris)
-  ctx.save();
-  for (let i = 0; i < 12; i++) {
-    const px = (canvasW * ((i * 0.618 + 0.1) % 1.0));
-    const py = ((t * 6 * (0.3 + (i % 3) * 0.15) + i * canvasH / 12) % (canvasH * 0.8));
-    const alpha = 0.06 + Math.abs(Math.sin(t * 0.4 + i)) * 0.12;
-    ctx.fillStyle = `rgba(100,136,187,${alpha})`;
-    ctx.beginPath(); ctx.arc(px, py, 1.5, 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.restore();
-}
-
-// ─── Zone 9: The Seawall ────────────────────────────────────────
-function drawSeawallBackground() {
-  const t = currentT;
-
-  const bg2 = ctx.createLinearGradient(0, 0, 0, canvasH);
-  bg2.addColorStop(0, '#080a0d'); bg2.addColorStop(0.5, '#040506'); bg2.addColorStop(1, '#020203');
-  ctx.fillStyle = bg2; ctx.fillRect(0, 0, canvasW, canvasH);
-
-  ctx.strokeStyle = '#0a0c10'; ctx.lineWidth = 0.5;
-  for (let x = 50; x < canvasW; x += 50) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvasH); ctx.stroke(); }
-  for (let y = 50; y < canvasH; y += 50) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvasW,y); ctx.stroke(); }
-
-  // The massive wall on the right side
-  ctx.save();
-  const wallX = canvasW * 0.82;
-  ctx.fillStyle = '#0c0e12';
-  ctx.fillRect(wallX, 0, canvasW - wallX, canvasH);
-
-  // Wall texture - bricks
-  ctx.strokeStyle = '#14161a'; ctx.lineWidth = 1;
-  for (let y = 0; y < canvasH; y += 20) {
-    ctx.beginPath(); ctx.moveTo(wallX, y); ctx.lineTo(canvasW, y); ctx.stroke();
-    const offset = (Math.floor(y / 20) % 2) * 15;
-    for (let x = wallX + offset; x < canvasW; x += 30) {
-      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + 20); ctx.stroke();
-    }
-  }
-
-  // Cracks with light
-  ctx.strokeStyle = 'rgba(85,102,119,0.4)'; ctx.lineWidth = 1.5;
-  ctx.shadowColor = '#556677'; ctx.shadowBlur = 10;
-  for (let i = 0; i < 4; i++) {
-    const cy = canvasH * (0.15 + i * 0.22);
-    ctx.beginPath();
-    ctx.moveTo(wallX + 5, cy);
-    ctx.lineTo(wallX + 15, cy + 8);
-    ctx.lineTo(wallX + 8, cy + 20);
-    ctx.stroke();
-  }
-  ctx.restore();
-
-  // Bottom rubble
-  ctx.save();
-  ctx.fillStyle = '#0a0c10';
-  for (let i = 0; i < 6; i++) {
-    const rx = canvasW * (0.05 + i * 0.13);
-    ctx.beginPath(); ctx.ellipse(rx, canvasH * 0.9, 20 + (i % 3) * 8, 10, 0, 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.restore();
-
-  // Dim particles
-  ctx.save();
-  for (let i = 0; i < 10; i++) {
-    const px = (canvasW * 0.75 * ((i * 0.618 + 0.1) % 1.0));
-    const py = ((t * 5 * (0.3 + (i % 3) * 0.2) + i * canvasH / 10) % canvasH);
-    const alpha = 0.05 + Math.abs(Math.sin(t * 0.3 + i)) * 0.1;
-    ctx.fillStyle = `rgba(85,102,119,${alpha})`;
-    ctx.beginPath(); ctx.arc(px, py, 1, 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.restore();
-}
-
-// ─── Clickable specials for new zones ────────────────────────────
-function drawClickCoralPearl(obj) {
-  const alpha = Math.min(1, obj.peekAnim * 3);
-  if (alpha <= 0.01) return;
-  const x = obj.fx * canvasW;
-  const y = obj.fy * canvasH + (1 - obj.peekAnim) * 15;
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#ffccaa';
-  ctx.shadowColor = '#ffaa88';
-  ctx.shadowBlur = 16;
-  ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#ffffff';
-  ctx.shadowBlur = 20;
-  ctx.beginPath(); ctx.arc(x - 3, y - 3, 3, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-}
-
-function drawClickSandFossil(obj) {
-  const alpha = Math.min(1, obj.peekAnim * 3);
-  if (alpha <= 0.01) return;
-  const x = obj.fx * canvasW;
-  const y = obj.fy * canvasH + (1 - obj.peekAnim) * 12;
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#aa8855';
-  ctx.shadowColor = '#ccaa77';
-  ctx.shadowBlur = 10;
-  ctx.beginPath(); ctx.ellipse(x, y, 14, 10, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#ccbb88'; ctx.lineWidth = 1;
-  ctx.beginPath();
-  for (let a = 0; a < Math.PI * 4; a += 0.2) {
-    const r = a * 1.5;
-    ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r * 0.7);
-  }
-  ctx.stroke();
-  ctx.restore();
-}
-
-// ─── Clickable specials for zones 3, 6, 7, 8, 9 ────────────────
-
-function drawClickReefUrchin(obj) {
-  const alpha = Math.min(1, obj.peekAnim * 3);
-  if (alpha <= 0.01) return;
-  const x = obj.fx * canvasW;
-  const y = obj.fy * canvasH + (1 - obj.peekAnim) * 15;
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#cc55aa';
-  ctx.shadowColor = '#ff66cc';
-  ctx.shadowBlur = 12;
-  ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#ff88cc'; ctx.lineWidth = 1.5;
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2;
-    ctx.beginPath();
-    ctx.moveTo(x + Math.cos(a) * 10, y + Math.sin(a) * 10);
-    ctx.lineTo(x + Math.cos(a) * 18, y + Math.sin(a) * 18);
-    ctx.stroke();
-  }
-  ctx.restore();
-}
-
-function drawClickMineGem(obj) {
-  const alpha = Math.min(1, obj.peekAnim * 3);
-  if (alpha <= 0.01) return;
-  const x = obj.fx * canvasW;
-  const y = obj.fy * canvasH + (1 - obj.peekAnim) * 12;
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#8888cc';
-  ctx.shadowColor = '#aaaaff';
-  ctx.shadowBlur = 16;
-  ctx.beginPath();
-  ctx.moveTo(x, y - 12); ctx.lineTo(x + 10, y - 4); ctx.lineTo(x + 8, y + 8);
-  ctx.lineTo(x - 8, y + 8); ctx.lineTo(x - 10, y - 4);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#ccccff'; ctx.shadowBlur = 20;
-  ctx.beginPath(); ctx.arc(x - 2, y - 4, 3, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-}
-
-function drawClickLooseTooth(obj) {
-  const alpha = Math.min(1, obj.peekAnim * 3);
-  if (alpha <= 0.01) return;
-  const x = obj.fx * canvasW;
-  const y = obj.fy * canvasH + (1 - obj.peekAnim) * 12;
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#ddccbb';
-  ctx.shadowColor = '#ffddcc';
-  ctx.shadowBlur = 10;
-  ctx.beginPath();
-  ctx.moveTo(x - 5, y + 10); ctx.lineTo(x, y - 14); ctx.lineTo(x + 5, y + 10);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#cc3333'; ctx.shadowColor = '#ff4444'; ctx.shadowBlur = 6;
-  ctx.beginPath(); ctx.arc(x, y + 8, 3, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-}
-
-function drawClickCityRelic(obj) {
-  const alpha = Math.min(1, obj.peekAnim * 3);
-  if (alpha <= 0.01) return;
-  const x = obj.fx * canvasW;
-  const y = obj.fy * canvasH + (1 - obj.peekAnim) * 12;
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#6688bb';
-  ctx.shadowColor = '#88aadd';
-  ctx.shadowBlur = 14;
-  ctx.fillRect(x - 8, y - 6, 16, 12);
-  ctx.strokeStyle = '#aaccff'; ctx.lineWidth = 1;
-  ctx.strokeRect(x - 8, y - 6, 16, 12);
-  ctx.fillStyle = '#aaccff'; ctx.shadowBlur = 20;
-  ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-}
-
-function drawClickWallShard(obj) {
-  const alpha = Math.min(1, obj.peekAnim * 3);
-  if (alpha <= 0.01) return;
-  const x = obj.fx * canvasW;
-  const y = obj.fy * canvasH + (1 - obj.peekAnim) * 12;
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#556677';
-  ctx.shadowColor = '#778899';
-  ctx.shadowBlur = 12;
-  ctx.beginPath();
-  ctx.moveTo(x - 10, y + 8); ctx.lineTo(x - 6, y - 10); ctx.lineTo(x + 4, y - 12);
-  ctx.lineTo(x + 10, y + 2); ctx.lineTo(x + 4, y + 10);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = '#8899aa'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(x - 4, y - 6); ctx.lineTo(x + 6, y + 4); ctx.stroke();
-  ctx.restore();
-}
-
-// ─── New fish shapes: jellyfish & angler ────────────────────────
-
 function drawJellyfish(f) {
-  const def = FISH[f.type], rc = goldenRC(f, RARITY_COLORS[def.rarity]), sz = def.size;
+  const def = FISH[f.type], rc = RARITY_COLORS[def.rarity], sz = def.size;
   const alpha = f.caught ? Math.max(0, 1 - f.catchAnim) : 1;
   const yOff = f.caught ? -f.catchAnim * 36 : 0;
   const baseSc = f.sizeScale || 1;
@@ -1570,7 +990,7 @@ function drawJellyfish(f) {
 }
 
 function drawAngler(f) {
-  const def = FISH[f.type], rc = goldenRC(f, RARITY_COLORS[def.rarity]), sz = def.size;
+  const def = FISH[f.type], rc = RARITY_COLORS[def.rarity], sz = def.size;
   const { alpha } = fishTransform(f);
   // Dark body
   ctx.shadowColor = rc.glow; ctx.shadowBlur = 10;
