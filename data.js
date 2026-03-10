@@ -260,18 +260,6 @@ const FISH = {
     desc: 'You saw it. Your scanner did not.',
   },
 
-  // ── ZONE 0: extra coast shapes ──
-  coast_clownfish: {
-    name: 'SIGNAL CLOWN', zone: 0, rarity: 'COMMON', goldValue: 1,
-    speed: 64, size: 16, wave: { amp: 10, freq: 3.5 },
-    desc: 'Stripes alternate between warning and camouflage.', shape: 'clown',
-  },
-  coast_puffer: {
-    name: 'BLOAT PUFFER', zone: 0, rarity: 'UNCOMMON', goldValue: 4,
-    speed: 46, size: 22, wave: { amp: 5, freq: 2 },
-    desc: 'Inflates when stressed. Currently inflated.', shape: 'puffer',
-  },
-
   // ── ZONE 1: THE SHALLOWS ──
   pale_goby: {
     name: 'PALE GOBY', zone: 1, rarity: 'COMMON', goldValue: 2,
@@ -775,6 +763,7 @@ const UPGRADE_CATEGORIES = [
   { name: 'BLACK FISH',    roots: ['bf_spawn_rate'] },
   { name: 'CONSUMABLES',   roots: [], special: 'consumables' },
   { name: 'NAVIGATION',    roots: ['atlas_access'] },
+  { name: 'SUBMARINE',     roots: ['submarine'] },
 ];
 
 const CONSUMABLES_DEF = [
@@ -846,6 +835,9 @@ const UPGRADES_DEF = [
   { id: 'atlas_access',     name: 'THE ATLAS',        desc: 'Chart the depths. Travel between zones.',        baseCost: 300,   max: 1 },
   { id: 'boat_access',      name: 'THE BOAT',         desc: 'Tune rod configuration and equipment.',          baseCost: 400,   max: 1,  parent: 'atlas_access' },
   { id: 'catalog_access',   name: 'THE CATALOG',      desc: 'Track every species encountered.',               baseCost: 600,   max: 1,  parent: 'atlas_access' },
+
+  // ── SUBMARINE ────────────────────────────────────────────
+  { id: 'submarine',        name: 'THE SUBMARINE',    desc: 'Control a submarine with WASD. The reel deploys from the sub.', baseCost: 5000, max: 1 },
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -854,20 +846,20 @@ const UPGRADES_DEF = [
 
 const BOSSES = [
   null, // zone 0 has no boss gate (starting zone)
-  { name: 'THE TIDE MOTHER',    hp: 50,    color: '#44aadd', size: 60,  speed: 60,  oscillation: 1.0, desc: 'Guardian of the shallows.' },
-  { name: 'THE SAND KING',      hp: 120,   color: '#ccaa44', size: 65,  speed: 75,  oscillation: 1.2, desc: 'Buried lord of the sandbank.' },
-  { name: 'THE CORAL WARDEN',   hp: 250,   color: '#cc55aa', size: 70,  speed: 85,  oscillation: 1.4, desc: 'Ancient keeper of the reef.' },
-  { name: 'THE SPRAWL HEART',   hp: 500,   color: '#ff6644', size: 75,  speed: 95,  oscillation: 1.6, desc: 'The living core of the coral.' },
-  { name: 'THE DUNE WYRM',      hp: 900,   color: '#ddaa44', size: 80,  speed: 105, oscillation: 1.8, desc: 'It sleeps beneath the sand.' },
-  { name: 'THE FOREMAN PRIME',  hp: 1600,  color: '#8888aa', size: 85,  speed: 115, oscillation: 2.0, desc: 'The mine remembers its master.' },
-  { name: 'THE APEX',           hp: 2800,  color: '#cc3333', size: 90,  speed: 125, oscillation: 2.3, desc: 'Ruler of the den. Unquestioned.' },
-  { name: 'THE CITY GOD',       hp: 5000,  color: '#6688bb', size: 95,  speed: 135, oscillation: 2.6, desc: 'It built the city. It IS the city.' },
-  { name: 'THE WALL ITSELF',    hp: 9000,  color: '#556677', size: 100, speed: 145, oscillation: 3.0, desc: 'The final barrier. It breathes.' },
-  { name: 'THE VOID MAW',       hp: 15000, color: '#4422aa', size: 105, speed: 155, oscillation: 3.4, desc: 'Beyond the wall, something waits.' },
-  { name: 'THE PASSAGE KEEPER', hp: 25000, color: '#338866', size: 100, speed: 165, oscillation: 3.8, desc: 'It decides who passes.' },
-  { name: 'THE SIREN QUEEN',    hp: 40000, color: '#cc44ff', size: 105, speed: 175, oscillation: 4.2, desc: 'Her song rewrites reality.' },
-  { name: 'THE TWILIGHT',       hp: 65000, color: '#553388', size: 110, speed: 185, oscillation: 4.6, desc: 'The last light is fading.' },
-  { name: 'THE BOTTOM FEEDER',  hp: 100000,color: '#222233', size: 120, speed: 200, oscillation: 5.0, desc: 'There is nothing deeper.' },
+  { name: 'THE TIDE MOTHER',    hp: 50,    color: '#44aadd', size: 120, speed: 0,  oscillation: 1.0, desc: 'Guardian of the shallows.' },
+  { name: 'THE SAND KING',      hp: 120,   color: '#ccaa44', size: 130, speed: 0,  oscillation: 1.2, desc: 'Buried lord of the sandbank.' },
+  { name: 'THE CORAL WARDEN',   hp: 250,   color: '#cc55aa', size: 140, speed: 0,  oscillation: 1.4, desc: 'Ancient keeper of the reef.' },
+  { name: 'THE SPRAWL HEART',   hp: 500,   color: '#ff6644', size: 150, speed: 0,  oscillation: 1.6, desc: 'The living core of the coral.' },
+  { name: 'THE DUNE WYRM',      hp: 900,   color: '#ddaa44', size: 160, speed: 0,  oscillation: 1.8, desc: 'It sleeps beneath the sand.' },
+  { name: 'THE FOREMAN PRIME',  hp: 1600,  color: '#8888aa', size: 170, speed: 0,  oscillation: 2.0, desc: 'The mine remembers its master.' },
+  { name: 'THE APEX',           hp: 2800,  color: '#cc3333', size: 180, speed: 0,  oscillation: 2.3, desc: 'Ruler of the den. Unquestioned.' },
+  { name: 'THE CITY GOD',       hp: 5000,  color: '#6688bb', size: 190, speed: 0,  oscillation: 2.6, desc: 'It built the city. It IS the city.' },
+  { name: 'THE WALL ITSELF',    hp: 9000,  color: '#556677', size: 200, speed: 0,  oscillation: 3.0, desc: 'The final barrier. It breathes.' },
+  { name: 'THE VOID MAW',       hp: 15000, color: '#4422aa', size: 210, speed: 0,  oscillation: 3.4, desc: 'Beyond the wall, something waits.' },
+  { name: 'THE PASSAGE KEEPER', hp: 25000, color: '#338866', size: 200, speed: 0,  oscillation: 3.8, desc: 'It decides who passes.' },
+  { name: 'THE SIREN QUEEN',    hp: 40000, color: '#cc44ff', size: 210, speed: 0,  oscillation: 4.2, desc: 'Her song rewrites reality.' },
+  { name: 'THE TWILIGHT',       hp: 65000, color: '#553388', size: 220, speed: 0,  oscillation: 4.6, desc: 'The last light is fading.' },
+  { name: 'THE BOTTOM FEEDER',  hp: 100000,color: '#222233', size: 240, speed: 0,  oscillation: 5.0, desc: 'There is nothing deeper.' },
 ];
 
 function getHarpoonDamage() {
@@ -923,16 +915,33 @@ function getEffectiveMax(id) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  ACHIEVEMENTS
+// ═══════════════════════════════════════════════════════════════
+
+const ACHIEVEMENTS = [
+  {
+    id: 'collect_20_fish', name: 'FIRST HAUL',
+    desc: 'Collect 20 fish.',
+    check: () => state.stats.totalCaught >= 20,
+    reward: { gold: 100 },
+    rewardDesc: '100 ✧',
+  },
+];
+
+// ═══════════════════════════════════════════════════════════════
 //  PRESTIGE UPGRADES
 // ═══════════════════════════════════════════════════════════════
 
 const PRESTIGE_UPGRADES_DEF = [
   { id: 'infinite_kelp',    name: 'THE INFINITE KELP',  desc: 'Unlocks the prestige tree.',              baseCost: 1,  max: 1 },
   { id: 'pearl_sell_boost', name: 'PEARL COATING',      desc: '+10% fish sell value per level.',         baseCost: 10, max: 10, costMult: 1.3, parent: 'infinite_kelp' },
-  { id: 'pearl_rod_speed',  name: 'TIDAL FORCE',        desc: '+5% permanent rod speed per level.',      baseCost: 10, max: 10, costMult: 1.3, parent: 'infinite_kelp' },
-  { id: 'pearl_spawn_rate', name: 'DEEP CURRENT',       desc: '+5% permanent fish spawn rate per level.',baseCost: 10, max: 10, costMult: 1.3, parent: 'infinite_kelp' },
+  { id: 'pearl_rod_speed',  name: 'TIDAL FORCE',        desc: '+10% permanent rod speed per level.',     baseCost: 10, max: 10, costMult: 1.3, parent: 'infinite_kelp' },
+  { id: 'pearl_spawn_rate', name: 'DEEP CURRENT',       desc: '+10% permanent fish spawn rate per level.',baseCost: 10, max: 10, costMult: 1.3, parent: 'infinite_kelp' },
   { id: 'pearl_extra_tiers', name: 'ABYSSAL MASTERY',   desc: '+2 max level to all tiered upgrades per level.', baseCost: 20, max: 5, costMult: 1.5, parent: 'infinite_kelp' },
   { id: 'pearl_blender',    name: 'THE BLENDER',        desc: 'Unlocks the Blender. Blend fish into pearls.', baseCost: 50, max: 1, parent: 'infinite_kelp' },
+  // Submarine
+  { id: 'pearl_sub_speed',  name: 'FASTER SUB',         desc: 'Increases submarine movement speed.',     baseCost: 100, max: 1, parent: 'infinite_kelp' },
+  { id: 'pearl_zone_skip',       name: 'DEPTH CLEARANCE',     desc: 'Start with next zone unlocked after prestige. Skips boss.', baseCost: 20, max: 10, costMult: 10, parent: 'infinite_kelp' },
 ];
 
 const PRESTIGE_UPGRADES_MAP = {};
@@ -953,9 +962,9 @@ function getPrestigeSellMultiplier() {
 }
 
 function getPrestigeRodSpeedMultiplier() {
-  return 1 + (state.prestige.upgrades.pearl_rod_speed || 0) * 0.05;
+  return 1 + (state.prestige.upgrades.pearl_rod_speed || 0) * 0.10;
 }
 
 function getPrestigeSpawnRateMultiplier() {
-  return 1 / (1 + (state.prestige.upgrades.pearl_spawn_rate || 0) * 0.05);
+  return 1 / (1 + (state.prestige.upgrades.pearl_spawn_rate || 0) * 0.10);
 }

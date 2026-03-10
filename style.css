@@ -19,6 +19,7 @@
   --epic:         #cc44ff;
   --legendary:    #ffcc44;
   --gold:         #ffcc44;
+  --essence:      #ccaaff;
   --bg:           #000;
   --panel-bg:     #031008;
   --border:       #003a20;
@@ -179,15 +180,15 @@ body::after {
 
 .gold-display {
   font-size: 1.1rem;
-  color: var(--green-mid);
+  color: #9977cc;
   flex-shrink: 0;
   min-width: 120px;
   text-align: right;
 }
 .gold-display strong {
-  color: var(--gold);
+  color: #ccaaff;
   font-size: 1.4rem;
-  text-shadow: 0 0 14px #ffcc4466;
+  text-shadow: 0 0 14px rgba(170,136,255,0.4);
 }
 
 .back-btn {
@@ -281,14 +282,6 @@ body::after {
   100% { opacity: 0; }
 }
 
-#fishing-title {
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: 5px;
-  color: var(--green-mid);
-  text-align: center;
-  text-shadow: 0 0 20px rgba(0,255,136,0.3);
-}
 
 #fishing-hud-right {
   display: flex;
@@ -328,8 +321,10 @@ body::after {
   top: -2px;
   margin-right: 2px;
   font-size: 0.85rem;
+  color: #aa88ff;
+  text-shadow: 0 0 8px rgba(170,136,255,0.6);
 }
-#gold-float strong { color: var(--gold); text-shadow: 0 0 10px #ffcc4455; font-size: 1.3rem; }
+#gold-float strong { color: #ccaaff; text-shadow: 0 0 10px rgba(170,136,255,0.4); font-size: 1.3rem; }
 
 #ability-bar {
   position: absolute;
@@ -2159,6 +2154,23 @@ body::after {
   text-align: center;
   padding: 10px;
 }
+
+.prestige-children-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+  max-width: 700px;
+  width: 100%;
+}
+.prestige-children-grid .prestige-node {
+  border-radius: 8px;
+  padding: 10px;
+  min-height: 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
 .prestige-node.prestige-affordable {
   border-color: #cc88ff;
   cursor: pointer;
@@ -2344,4 +2356,54 @@ body::after {
 }
 @media (max-width: 480px) {
   #inventory-grid       { grid-template-columns: 1fr; }
+}
+
+/* ══════════════════════════════════════════
+   ACHIEVEMENTS
+══════════════════════════════════════════ */
+
+#achievements-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+  padding: 16px;
+}
+
+.achievement-item {
+  background: rgba(0,20,10,0.6);
+  border: 1px solid var(--border);
+  padding: 12px 14px;
+  transition: border-color 0.3s;
+}
+.achievement-item.achieved {
+  border-color: var(--green-dark);
+  background: rgba(0,40,20,0.3);
+}
+.achievement-name {
+  color: var(--green);
+  font-weight: bold;
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+}
+.achieved .achievement-name {
+  color: var(--green-bright);
+  text-shadow: 0 0 8px var(--green);
+}
+.achievement-desc {
+  color: rgba(68,255,170,0.5);
+  font-size: 0.7rem;
+  margin-bottom: 6px;
+}
+.achievement-reward {
+  color: var(--gold);
+  font-size: 0.7rem;
+}
+
+/* ══════════════════════════════════════════
+   SUBMARINE TOGGLE
+══════════════════════════════════════════ */
+
+#sub-toggle {
+  display: flex;
+  gap: 2px;
 }

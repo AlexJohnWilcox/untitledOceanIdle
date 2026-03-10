@@ -7,12 +7,6 @@ function getSpawnPool(zoneId) {
   const fish = [...zone.fish];
   const weights = [...zone.spawnWeights];
 
-  // Add extra coast fish to zone 0 spawn pool
-  if (zoneId === 0) {
-    fish.push('coast_clownfish', 'coast_puffer');
-    weights.push(20, 12);
-  }
-
   // Bleedthrough from previous 2 zones
   for (let dist = 1; dist <= 2; dist++) {
     const prevId = zoneId - dist;
@@ -101,11 +95,19 @@ function throwNet(cx, cy, typeId) {
   renderConsumablesPanel();
 }
 
+function getHookOrigin() {
+  if (state.subMode && state.upgrades.submarine >= 1) {
+    return { x: state.subX * canvasW, y: state.subY * canvasH };
+  }
+  return { x: canvasW / 2, y: canvasH - 30 };
+}
+
 function castHook(tx, ty) {
   if (cv.cooldown > 0 || cv.hook) return;
+  const origin = getHookOrigin();
   cv.hook = {
-    x: canvasW / 2, y: canvasH - 30,
-    ox: canvasW / 2, oy: canvasH - 30,
+    x: origin.x, y: origin.y,
+    ox: origin.x, oy: origin.y,
     tx, ty, state: 'traveling', lingerTimer: 0,
   };
   state.stats.totalCasts++;
@@ -130,7 +132,6 @@ function castHook(tx, ty) {
           tx: mtx, ty, state: 'traveling', lingerTimer: 0,
           isExtra: true,
         };
-        cv.extraHooks = cv.extraHooks || [];
         cv.extraHooks.push(extraHook);
       }, 60);
     }
@@ -152,7 +153,7 @@ function catchFish(fishId, typeId) {
     state.inventory[goldenKey] = (state.inventory[goldenKey] || 0) + 1;
     state.stats.totalCaught++;
     const goldenValue = Math.floor(def.goldValue * 10 * getGoldMultiplier() * (state.sellMultiplier || 1));
-    cv.catchFlashes.push({ x: fish.x, y: fish.currentY, timer: 2.4, text: `★ GOLDEN ${def.name}! ${goldenValue}◈`, color: '#ffee44' });
+    cv.catchFlashes.push({ x: fish.x, y: fish.currentY, timer: 2.4, text: `★ GOLDEN ${def.name}! ${goldenValue}✧`, color: '#ffee44' });
     // Auto sell golden fish
     if (state.flags.autoSellEnabled && state.upgrades.auto_sell > 0) {
       state.gold += goldenValue;
@@ -175,7 +176,7 @@ function catchFish(fishId, typeId) {
   // "New Fish!" text on first-ever catch
   const isNew = prevCaught === 0;
   const fishValue = Math.floor(def.goldValue * getGoldMultiplier() * (state.sellMultiplier || 1));
-  const flashText = isNew ? `✦ NEW FISH! ${def.name} [${rar}] ${fishValue}◈` : `${def.name} [${rar}] ${fishValue}◈`;
+  const flashText = isNew ? `✦ NEW FISH! ${def.name} [${rar}] ${fishValue}✧` : `${def.name} [${rar}] ${fishValue}✧`;
   const flashColor = isNew ? '#ffffff' : rc.glow;
   cv.catchFlashes.push({ x: fish.x, y: fish.currentY, timer: isNew ? 2.4 : 1.6, text: flashText, color: flashColor });
 
@@ -194,7 +195,7 @@ function catchFish(fishId, typeId) {
 
   // Auto sell: immediately sell the fish if enabled
   if (state.flags.autoSellEnabled && state.upgrades.auto_sell > 0) {
-    const sellValue = def.goldValue * getGoldMultiplier() * (state.sellMultiplier || 1);
+    const sellValue = Math.floor(def.goldValue * getGoldMultiplier() * (state.sellMultiplier || 1));
     state.gold += sellValue;
     state.totalGoldEarned += sellValue;
     state.inventory[typeId] = (state.inventory[typeId] || 0) - 1;
@@ -209,7 +210,7 @@ function catchFish(fishId, typeId) {
 function checkHookCollision(hx, hy) {
   for (const f of cv.fish) {
     if (f.caught) continue;
-    if (dist(hx, f.x, hy, f.currentY) < getCatchRadius(f.type) + FISH[f.type].size * 0.55) {
+    if (dist(hx, f.x, hy, f.currentY) < getCatchRadius() + FISH[f.type].size * 0.55) {
       catchFish(f.id, f.type);
     }
   }
@@ -260,7 +261,7 @@ function clickCrab(cx, cy) {
         state.inventory[goldenKey] = (state.inventory[goldenKey] || 0) - 1;
         if (state.inventory[goldenKey] <= 0) delete state.inventory[goldenKey];
       }
-      cv.catchFlashes.push({ x: rx, y: ry, timer: 2.4, text: `★ GOLDEN SHORE CRAB! ${goldenValue}◈`, color: '#ffee44' });
+      cv.catchFlashes.push({ x: rx, y: ry, timer: 2.4, text: `★ GOLDEN SHORE CRAB! ${goldenValue}✧`, color: '#ffee44' });
       audio.play('catch_rare');
       c.active = false;
       c.spawnTimer = 30 + Math.random() * 45;
@@ -278,7 +279,7 @@ function clickCrab(cx, cy) {
       state.inventory['shore_crab'] = (state.inventory['shore_crab'] || 0) - 1;
       if (state.inventory['shore_crab'] <= 0) delete state.inventory['shore_crab'];
     }
-    cv.catchFlashes.push({ x: rx, y: ry, timer: 1.6, text: `SHORE CRAB [RARE] ${crabValue}◈`, color: RARITY_COLORS.RARE.glow });
+    cv.catchFlashes.push({ x: rx, y: ry, timer: 1.6, text: `SHORE CRAB [RARE] ${crabValue}✧`, color: RARITY_COLORS.RARE.glow });
     audio.play('catch_rare');
     c.active = false;
     c.spawnTimer = 30 + Math.random() * 45;
@@ -338,7 +339,7 @@ function clickSpecial(obj, typeId, cx, cy) {
         state.inventory[goldenKey] = (state.inventory[goldenKey] || 0) - 1;
         if (state.inventory[goldenKey] <= 0) delete state.inventory[goldenKey];
       }
-      cv.catchFlashes.push({ x: rx, y: ry, timer: 2.4, text: `★ GOLDEN ${def.name}! ${goldenValue}◈`, color: '#ffee44' });
+      cv.catchFlashes.push({ x: rx, y: ry, timer: 2.4, text: `★ GOLDEN ${def.name}! ${goldenValue}✧`, color: '#ffee44' });
       audio.play('catch_rare');
       obj.active = false;
       obj.spawnTimer = 35 + Math.random() * 45;
@@ -356,7 +357,7 @@ function clickSpecial(obj, typeId, cx, cy) {
       state.inventory[typeId] = (state.inventory[typeId] || 0) - 1;
       if (state.inventory[typeId] <= 0) delete state.inventory[typeId];
     }
-    cv.catchFlashes.push({ x: rx, y: ry, timer: 1.6, text: `${def.name} [RARE] ${specValue}◈`, color: RARITY_COLORS.RARE.glow });
+    cv.catchFlashes.push({ x: rx, y: ry, timer: 1.6, text: `${def.name} [RARE] ${specValue}✧`, color: RARITY_COLORS.RARE.glow });
     audio.play('catch_rare');
     obj.active = false;
     obj.spawnTimer = 35 + Math.random() * 45;

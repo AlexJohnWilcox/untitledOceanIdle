@@ -1,5 +1,9 @@
 const ZONE_SPECIALS = [null, cv.starfish, cv.sandDollar, cv.reefUrchin, cv.coralPearl, cv.sandFossil, cv.mineGem, cv.looseTooth, cv.cityRelic, cv.wallShard, cv.abyssCrystal, cv.passageKey, cv.sirenScale, cv.twilightOrb, cv.trenchBone];
 
+// Cached DOM elements for hot-path lookups
+const _screenFishing = document.getElementById('screen-fishing');
+let _milestoneTimer = 0;
+
 // ═══════════════════════════════════════════════════════════════
 //  CREDITS
 // ═══════════════════════════════════════════════════════════════
@@ -40,9 +44,22 @@ function loop(timestamp) {
   const dt = Math.min(t - currentT, 0.25);
   currentT = t;
   update(dt, t);
-  if (document.getElementById('screen-fishing').classList.contains('active')) draw();
+  if (_screenFishing.classList.contains('active')) draw();
+  // Update submarine WASD
+  if (state.subMode && state.upgrades.submarine >= 1) {
+    const subSpeed = 0.3 * (1 + (state.prestige.upgrades.pearl_sub_speed || 0) * 0.5);
+    if (_keysDown['w'] || _keysDown['arrowup'])    state.subY = Math.max(0.05, state.subY - subSpeed * dt);
+    if (_keysDown['s'] || _keysDown['arrowdown'])  state.subY = Math.min(0.85, state.subY + subSpeed * dt);
+    if (_keysDown['a'] || _keysDown['arrowleft'])  state.subX = Math.max(0.05, state.subX - subSpeed * dt);
+    if (_keysDown['d'] || _keysDown['arrowright']) state.subX = Math.min(0.95, state.subX + subSpeed * dt);
+  }
   requestAnimationFrame(loop);
 }
+
+// Track WASD keys for submarine
+const _keysDown = {};
+document.addEventListener('keydown', (e) => { _keysDown[e.key.toLowerCase()] = true; });
+document.addEventListener('keyup', (e) => { _keysDown[e.key.toLowerCase()] = false; });
 
 function update(dt, t) {
   state.playTime += dt;
@@ -144,7 +161,7 @@ function update(dt, t) {
     cv.spawnTimer = (3 + Math.random() * 2.0) * densityReduction * getPrestigeSpawnRateMultiplier();
   }
 
-  // Bait timers
+  // ── Ability cooldowns ──
   if (state.baitTimer > 0) {
     state.baitTimer = Math.max(0, state.baitTimer - dt);
   }
@@ -160,7 +177,7 @@ function update(dt, t) {
     updateMultiCastBtn();
   }
 
-  // Auto abilities: auto-use bait and multi-cast when off cooldown
+  // ── Auto abilities: fire bait/multi-cast when off cooldown ──
   if (state.flags.autoBaitEnabled && state.upgrades.auto_bait > 0 && state.baitCooldown <= 0 && state.baitTimer <= 0) {
     useBait();
   }
@@ -240,7 +257,7 @@ function update(dt, t) {
   }
 
   // Extra hooks from multi-cast
-  if (cv.extraHooks && cv.extraHooks.length) {
+  if (cv.extraHooks.length) {
     const SPEED = getCastSpeed();
     for (let i = cv.extraHooks.length - 1; i >= 0; i--) {
       const h = cv.extraHooks[i];
@@ -321,7 +338,12 @@ function update(dt, t) {
     state.labSaleTimer = Math.max(0, state.labSaleTimer - dt);
   }
 
-  checkMilestones();
+  // Throttle milestone checks to every ~0.5s instead of every frame
+  _milestoneTimer += dt;
+  if (_milestoneTimer >= 0.5) {
+    _milestoneTimer = 0;
+    checkMilestones();
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -386,7 +408,7 @@ function clickBlackFish(cx, cy) {
     // Fishmonger's Boon: sell multiplier for duration (40%)
     state.fishmongerBoonTimer = baseDur;
     state.sellMultiplier = sellMult;
-    showBlackFishBanner('◈ FISHMONGER\'S BOON!', `${sellMult.toFixed(1)}x sell price for ${Math.round(baseDur)}s`, '#ffcc44');
+    showBlackFishBanner('✧ FISHMONGER\'S BOON!', `${sellMult.toFixed(1)}x sell price for ${Math.round(baseDur)}s`, '#ffcc44');
   } else if (roll < 0.8) {
     // Treasure Chest: all spawns are golden for duration (40%)
     state.treasureChestTimer = baseDur;
@@ -425,15 +447,10 @@ function updateBossFight(dt, t) {
   bf.timer -= dt;
   bf.wobble += dt * 1.5;
 
-  // Erratic movement — oscillation scales with zone depth
+  // Boss stays centered, small up/down bob for realism (no dodging)
   const boss = bf.bossData;
-  const osc = boss.oscillation || 1;
-  bf.x += bf.dir * boss.speed * 0.5 * dt;
-  bf.x += Math.sin(bf.wobble * 2.5 * osc) * osc * 1.5;
-  bf.y = canvasH * 0.4 + Math.sin(bf.wobble * 0.5) * 30 + Math.cos(bf.wobble * 1.8 * osc) * 20 * osc;
-  if (bf.x > canvasW * 0.8) bf.dir = -1;
-  if (bf.x < canvasW * 0.2) bf.dir = 1;
-  bf.x = Math.max(boss.size, Math.min(canvasW - boss.size, bf.x));
+  bf.x = canvasW * 0.5;
+  bf.y = canvasH * 0.4 + Math.sin(bf.wobble * 0.5) * 15;
 
   // Hit flash decay
   if (bf.hitFlash > 0) bf.hitFlash = Math.max(0, bf.hitFlash - dt * 4);
@@ -494,7 +511,7 @@ function updateBossFight(dt, t) {
     state.gold += bossGold;
     state.totalGoldEarned += bossGold;
     updateAllGoldDisplays();
-    showBlackFishBanner('⚔ BOSS DEFEATED!', `+${fmt(bossGold)}◈`, ZONES[bf.targetZone].color);
+    showBlackFishBanner('⚔ BOSS DEFEATED!', `+${fmt(bossGold)}✧`, ZONES[bf.targetZone].color);
     setTimeout(flashZoneOverlay, 400);
     spawnFish(); spawnFish(); spawnFish();
     return;
@@ -512,7 +529,7 @@ function updateBossFight(dt, t) {
     updateAllGoldDisplays();
     // Return to previous zone
     cv.fish = []; cv.hook = null; cv.cooldown = 0; cv.spawnTimer = 0;
-    showBlackFishBanner('✖ BOSS SURVIVED', `Lost ${fmt(penalty)}◈ · returned to ${ZONES[state.currentZone].name}`, '#ff4444');
+    showBlackFishBanner('✖ BOSS SURVIVED', `Lost ${fmt(penalty)}✧ · returned to ${ZONES[state.currentZone].name}`, '#ff4444');
     spawnFish(); spawnFish(); spawnFish();
     return;
   }
@@ -521,10 +538,9 @@ function updateBossFight(dt, t) {
 function castHarpoon(cx, cy) {
   if (!state.bossFight) return;
   if (cv.harpoon) return; // one at a time
-  const ox = canvasW / 2;
-  const oy = canvasH - 30;
+  const origin = (typeof getHookOrigin === 'function') ? getHookOrigin() : { x: canvasW / 2, y: canvasH - 30 };
   cv.harpoon = {
-    x: ox, y: oy, tx: cx, ty: cy, ox, oy,
+    x: origin.x, y: origin.y, tx: cx, ty: cy, ox: origin.x, oy: origin.y,
     state: 'traveling',
   };
   audio.play('cast');
@@ -600,6 +616,27 @@ document.getElementById('btn-upgrades').addEventListener('click', () => switchSc
 document.getElementById('btn-atlas').addEventListener('click',    () => switchScreen('screen-atlas'));
 document.getElementById('btn-boat').addEventListener('click',     () => switchScreen('screen-boat'));
 document.getElementById('btn-catalog').addEventListener('click', () => switchScreen('screen-catalog'));
+
+// Achievements
+let _achievementsReturnScreen = 'screen-fishing';
+document.getElementById('btn-achievements-fishing').addEventListener('click', () => {
+  _achievementsReturnScreen = 'screen-fishing';
+  renderAchievements();
+  switchScreen('screen-achievements');
+});
+document.getElementById('btn-back-achievements').addEventListener('click', () => switchScreen(_achievementsReturnScreen));
+
+// Submarine toggle
+document.getElementById('btn-sub-rod').addEventListener('click', () => {
+  state.subMode = false;
+  document.getElementById('btn-sub-rod').classList.add('weapon-active');
+  document.getElementById('btn-sub-mode').classList.remove('weapon-active');
+});
+document.getElementById('btn-sub-mode').addEventListener('click', () => {
+  state.subMode = true;
+  document.getElementById('btn-sub-mode').classList.add('weapon-active');
+  document.getElementById('btn-sub-rod').classList.remove('weapon-active');
+});
 
 document.getElementById('btn-back-shop').addEventListener('click',     () => { document.getElementById('btn-back-shop').classList.remove('pulse-hint', 'pulse-strong'); switchScreen('screen-fishing'); });
 document.getElementById('btn-back-upgrades').addEventListener('click', () => { document.getElementById('btn-back-upgrades').classList.remove('pulse-hint'); switchScreen('screen-fishing'); });
@@ -1094,7 +1131,7 @@ document.addEventListener('keydown', (e) => {
     if (_devBuffer.endsWith('boon')) {
       state.fishmongerBoonTimer = 10;
       state.sellMultiplier = 3;
-      showBlackFishBanner('◈ FISHMONGER\'S BOON!', '3x sell price for 10s', '#ffcc44');
+      showBlackFishBanner('✧ FISHMONGER\'S BOON!', '3x sell price for 10s', '#ffcc44');
       _devBuffer = '';
     }
     if (_devBuffer.endsWith('chest')) {

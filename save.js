@@ -24,6 +24,7 @@ function exportSave() {
     prestige: state.prestige,
     blender: state.blender,
     playTime: state.playTime,
+    achievementsCompleted: state.achievementsCompleted,
   }));
 }
 
@@ -83,6 +84,9 @@ function importSave(code) {
     }
     if (d.blender) {
       state.blender = { ...state.blender, ...d.blender };
+    }
+    if (d.achievementsCompleted) {
+      state.achievementsCompleted = { ...state.achievementsCompleted, ...d.achievementsCompleted };
     }
     cv.fish = []; cv.hook = null; cv.cooldown = 0; cv.placedNets = [];
     cv.blackFish.active = false; cv.blackFish.spawnTimer = 60 + Math.random() * 90;

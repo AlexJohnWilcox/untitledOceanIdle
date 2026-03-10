@@ -39,6 +39,7 @@ const cv = {
     phaseTimer: 0, spawnTimer: 60 + Math.random() * 90,
     dir: 1, wobbleOffset: 0,
   },
+  extraHooks: [],
   harpoon: null, // { x, y, tx, ty, ox, oy, state: 'traveling'|'retracting' }
   bossHitFlashes: [],
 };
@@ -164,7 +165,7 @@ function draw() {
     if (cv.inCanvas && !cv.hook && cv.cooldown <= 0) drawReticle(cv.mouseX, cv.mouseY);
     for (const f of cv.fish) drawFish(f);
     if (cv.hook) drawHook(cv.hook);
-    if (cv.extraHooks) for (const eh of cv.extraHooks) drawHook(eh);
+    for (const eh of cv.extraHooks) drawHook(eh);
     for (const net of cv.nets) drawNet(net);
   }
 
@@ -173,8 +174,12 @@ function draw() {
 
   if (cv.screenShake.x !== 0 || cv.screenShake.y !== 0) ctx.restore();
 
-  // Rod hub semi-circle at bottom center
-  drawRodHub();
+  // Rod hub or submarine
+  if (state.subMode && state.upgrades.submarine >= 1) {
+    drawSubmarine();
+  } else {
+    drawRodHub();
+  }
 
   for (const fl of cv.catchFlashes) {
     const alpha = Math.min(1, fl.timer * 1.3);
@@ -216,7 +221,7 @@ function draw() {
     ctx.font = 'bold 13px "Space Mono"';
     ctx.fillStyle = '#ffcc44'; ctx.shadowColor = '#ffcc44'; ctx.shadowBlur = 12;
     ctx.textAlign = 'center';
-    ctx.fillText(`◈ FISHMONGER'S BOON ${(state.sellMultiplier || 1).toFixed(1)}x: ${Math.ceil(state.fishmongerBoonTimer)}s`, canvasW / 2, effectY);
+    ctx.fillText(`✧ FISHMONGER'S BOON ${(state.sellMultiplier || 1).toFixed(1)}x: ${Math.ceil(state.fishmongerBoonTimer)}s`, canvasW / 2, effectY);
     ctx.restore();
     effectY += 20;
   }
@@ -834,6 +839,72 @@ function drawRodHub() {
   ctx.shadowColor = '#00ff88';
   ctx.shadowBlur = 12;
   ctx.fill();
+  ctx.restore();
+}
+
+function drawSubmarine() {
+  const sx = state.subX * canvasW;
+  const sy = state.subY * canvasH;
+  const sz = 28;
+
+  ctx.save();
+  // Hull
+  ctx.fillStyle = '#334455';
+  ctx.shadowColor = '#44aaff';
+  ctx.shadowBlur = 12;
+  ctx.beginPath();
+  ctx.ellipse(sx, sy, sz * 1.8, sz * 0.7, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Top hull
+  ctx.fillStyle = '#445566';
+  ctx.shadowBlur = 0;
+  ctx.beginPath();
+  ctx.ellipse(sx, sy - sz * 0.3, sz * 1.2, sz * 0.45, 0, Math.PI, 0);
+  ctx.fill();
+
+  // Conning tower
+  ctx.fillStyle = '#556677';
+  ctx.fillRect(sx - 8, sy - sz * 0.9, 16, sz * 0.4);
+
+  // Periscope
+  ctx.strokeStyle = '#778899';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(sx, sy - sz * 0.9);
+  ctx.lineTo(sx, sy - sz * 1.3);
+  ctx.lineTo(sx + 6, sy - sz * 1.3);
+  ctx.stroke();
+
+  // Propeller
+  const propX = sx - sz * 1.8;
+  ctx.strokeStyle = '#88aacc';
+  ctx.lineWidth = 2;
+  const propAngle = currentT * 8;
+  for (let i = 0; i < 3; i++) {
+    const a = propAngle + i * (Math.PI * 2 / 3);
+    ctx.beginPath();
+    ctx.moveTo(propX, sy);
+    ctx.lineTo(propX + Math.cos(a) * 8, sy + Math.sin(a) * 8);
+    ctx.stroke();
+  }
+
+  // Window
+  ctx.fillStyle = '#88ccff';
+  ctx.shadowColor = '#88ccff';
+  ctx.shadowBlur = 8;
+  ctx.beginPath();
+  ctx.arc(sx + sz * 0.6, sy - sz * 0.05, sz * 0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Rod tip indicator on bottom of sub
+  ctx.beginPath();
+  ctx.arc(sx, sy + sz * 0.7, 3, 0, Math.PI * 2);
+  ctx.fillStyle = '#00ff88';
+  ctx.shadowColor = '#00ff88';
+  ctx.shadowBlur = 12;
+  ctx.fill();
+
   ctx.restore();
 }
 

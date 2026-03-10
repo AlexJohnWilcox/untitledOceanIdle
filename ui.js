@@ -263,6 +263,65 @@ function checkMilestones() {
     document.getElementById('auto-multi-toggle').style.display = 'flex';
     document.getElementById('auto-multi-checkbox').checked = state.flags.autoMultiEnabled;
   }
+
+  // Submarine toggle
+  if (state.upgrades.submarine >= 1) {
+    document.getElementById('sub-toggle').style.display = 'flex';
+  }
+
+  // Check achievements
+  checkAchievements();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ACHIEVEMENTS
+// ═══════════════════════════════════════════════════════════════
+
+function checkAchievements() {
+  for (const ach of ACHIEVEMENTS) {
+    if (state.achievementsCompleted[ach.id]) continue;
+    if (ach.check()) {
+      state.achievementsCompleted[ach.id] = true;
+      applyAchievementReward(ach);
+      showNotif(`ACHIEVEMENT: ${ach.name}`);
+    }
+  }
+}
+
+function applyAchievementReward(ach) {
+  if (ach.reward.gold) {
+    state.gold += ach.reward.gold;
+    state.totalGoldEarned += ach.reward.gold;
+  }
+  if (ach.reward.legendaryFish) {
+    const legendaries = Object.values(FISH).filter(f => f.rarity === 'LEGENDARY' && f.zone <= Math.max(...state.unlockedZones));
+    if (legendaries.length > 0) {
+      const fish = legendaries[Math.floor(Math.random() * legendaries.length)];
+      const fishId = Object.keys(FISH).find(k => FISH[k] === fish);
+      if (fishId) {
+        state.inventory[fishId] = (state.inventory[fishId] || 0) + 1;
+        state.catalogCaught[fishId] = (state.catalogCaught[fishId] || 0) + 1;
+      }
+    }
+  }
+  updateAllGoldDisplays();
+}
+
+function renderAchievements() {
+  const el = document.getElementById('achievements-list');
+  if (!el) return;
+  let html = '';
+  for (const ach of ACHIEVEMENTS) {
+    const done = state.achievementsCompleted[ach.id];
+    html += `
+      <div class="achievement-item ${done ? 'achieved' : ''}">
+        <div class="achievement-name">${done ? '✓ ' : ''}${ach.name}</div>
+        <div class="achievement-desc">${ach.desc}</div>
+        <div class="achievement-reward">REWARD: ${ach.rewardDesc}</div>
+      </div>
+    `;
+  }
+  el.innerHTML = html;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -313,8 +372,8 @@ function showBubble(id, unread) {
 function addGuideArrow() {}
 
 function updateAllGoldDisplays() {
-  const g = Math.floor(state.gold);
-  ['gold-fishing', 'gold-shop', 'gold-upgrades', 'gold-atlas', 'gold-boat', 'gold-catalog'].forEach(id => {
+  const g = fmt(Math.floor(state.gold));
+  ['gold-fishing', 'gold-shop', 'gold-upgrades', 'gold-atlas', 'gold-boat', 'gold-catalog', 'gold-achievements'].forEach(id => {
     const elem = document.getElementById(id);
     if (!elem) return;
     elem.textContent = g;
@@ -337,7 +396,7 @@ function flashZoneOverlay() {
 
 // ─── Screen management ───
 
-const ALL_SCREENS = ['screen-fishing', 'screen-shop', 'screen-upgrades', 'screen-atlas', 'screen-boat', 'screen-catalog', 'screen-prestige'];
+const ALL_SCREENS = ['screen-fishing', 'screen-shop', 'screen-upgrades', 'screen-atlas', 'screen-boat', 'screen-catalog', 'screen-prestige', 'screen-achievements'];
 
 function switchScreen(to) {
   const overlay = document.getElementById('transition-overlay');
@@ -388,6 +447,9 @@ function switchScreen(to) {
     }
     if (to === 'screen-prestige') {
       renderPrestigeStore();
+    }
+    if (to === 'screen-achievements') {
+      renderAchievements();
     }
   }, 180);
 }
@@ -803,7 +865,7 @@ function renderInventory() {
         </div>
         <div class="inv-card-top-right">
           <button class="sell-btn" data-type="${goldenId}">SELL ALL</button>
-          <div class="inv-value" style="color:#ffcc44">${goldValue}◈ each · = ${total}◈</div>
+          <div class="inv-value" style="color:#ffcc44">${goldValue}✧ each · = ${total}✧</div>
         </div>
       </div>
       <div class="inv-card-fish"><canvas class="inv-fish-canvas" width="360" height="120"></canvas></div>
@@ -833,7 +895,7 @@ function renderInventory() {
         </div>
         <div class="inv-card-top-right">
           <button class="sell-btn" data-type="${typeId}">SELL ALL</button>
-          <div class="inv-value">${def.goldValue}◈ each · = ${total}◈</div>
+          <div class="inv-value">${def.goldValue}✧ each · = ${total}✧</div>
         </div>
       </div>
       <div class="inv-card-fish"><canvas class="inv-fish-canvas" width="360" height="120"></canvas></div>
@@ -862,7 +924,7 @@ function updateSellAllBtn() {
       return s + q * (FISH[id]?.goldValue || 0) * mult;
     }, 0));
   const boonTag = (state.sellMultiplier || 1) > 1 ? ` (${state.sellMultiplier}x!)` : '';
-  btn.textContent = total > 0 ? `[ SELL ALL — ${total}◈${boonTag} ]` : '[ SELL ALL ]';
+  btn.textContent = total > 0 ? `[ SELL ALL — ${total}✧${boonTag} ]` : '[ SELL ALL ]';
   if (!state.flags.sellAllUsed && total > 0) {
     btn.classList.add('pulse-hint');
   } else {
@@ -1028,7 +1090,7 @@ function buildTreeNode(id, isRoot) {
       <div class="tree-node-name">${def.name}</div>
       ${isRoot ? `<div class="tree-node-desc">${descHtml}</div>` : `<div class="tree-node-desc-small">${descHtml}</div>`}
       <div class="tree-node-level">${owned} / ${effMax}</div>
-      <button class="tree-node-btn" ${canBuy ? '' : 'disabled'}>${cost === 0 ? 'FREE' : fmt(cost) + '◈'}</button>
+      <button class="tree-node-btn" ${canBuy ? '' : 'disabled'}>${cost === 0 ? 'FREE' : fmt(cost) + '✧'}</button>
     `;
     const btn = node.querySelector('.tree-node-btn');
     if (btn) btn.addEventListener('click', (e) => { e.stopPropagation(); buyUpgrade(id); });
@@ -1132,7 +1194,7 @@ function renderUpgrades() {
         </div>
         <div class="upg-card-bottom">
           <div class="upg-level">owned: ${owned}</div>
-          <button class="upg-btn" data-id="${def.id}" ${canBuy ? '' : 'disabled'}>${fmt(def.cost)}◈ each</button>
+          <button class="upg-btn" data-id="${def.id}" ${canBuy ? '' : 'disabled'}>${fmt(def.cost)}✧ each</button>
         </div>
       `;
       card.querySelector('.upg-btn').addEventListener('click', () => buyConsumable(def.id));
@@ -1217,8 +1279,8 @@ function renderAtlas() {
       actionBlock = `<div class="atlas-lock-info">[ UNLOCK PREVIOUS ZONE FIRST ]</div>`;
     } else if (zone.implemented) {
       actionBlock = `
-        <div class="atlas-lock-info">Requires <strong>${fmt(zone.unlockCost)}◈</strong> to unlock · you have <strong>${fmt(Math.floor(state.gold))}◈</strong></div>
-        <button class="descend-btn" data-zone="${zoneId}" ${canBuy ? '' : 'disabled'}>DESCEND — ${fmt(zone.unlockCost)}◈</button>
+        <div class="atlas-lock-info">Requires <strong>${fmt(zone.unlockCost)}✧</strong> to unlock · you have <strong>${fmt(Math.floor(state.gold))}✧</strong></div>
+        <button class="descend-btn" data-zone="${zoneId}" ${canBuy ? '' : 'disabled'}>DESCEND — ${fmt(zone.unlockCost)}✧</button>
       `;
     } else {
       actionBlock = `<div class="atlas-lock-info">[ NOT YET CHARTED ]</div>`;
@@ -1415,7 +1477,7 @@ function renderCatalog() {
         <div class="catalog-desc">${def.desc}</div>
         <div class="catalog-meta">
           <span>${zoneName}</span>
-          <span>${def.goldValue}◈</span>
+          <span>${def.goldValue}✧</span>
           <span>caught: ${caught}</span>
         </div>
       </div>
@@ -1464,15 +1526,12 @@ function renderPrestigeStore() {
   const rootNode = createPrestigeNode(rootDef, 'prestige-root');
   tree.appendChild(rootNode);
 
-  // Render children in a circle
+  // Render children in a grid layout (too many for a ring now)
   const childContainer = document.createElement('div');
-  childContainer.className = 'prestige-children-ring';
+  childContainer.className = 'prestige-children-grid';
 
-  children.forEach((def, i) => {
+  children.forEach((def) => {
     const node = createPrestigeNode(def);
-    const angle = (i / children.length) * 360 - 90; // start from top
-    node.style.setProperty('--angle', angle + 'deg');
-    node.style.setProperty('--child-index', i);
     childContainer.appendChild(node);
   });
 
@@ -1530,9 +1589,10 @@ function performPrestige() {
   state.prestige.pearls += pearls;
   state.prestige.timesPrestiged++;
 
-  // Save prestige data and catalog before reset
+  // Save prestige data, catalog, achievements before reset
   const savedPrestige = JSON.parse(JSON.stringify(state.prestige));
   const savedCatalog = JSON.parse(JSON.stringify(state.catalogCaught));
+  const savedAchievements = JSON.parse(JSON.stringify(state.achievementsCompleted));
   const savedSfx = state.sfxVolume;
   const savedMusic = state.musicVolume;
 
@@ -1559,11 +1619,13 @@ function performPrestige() {
       multi_cast: 0, multi_cooldown: 0, multi_duration: 0, multi_rods: 0, auto_multi: 0,
       bf_spawn_rate: 0, bf_spawn_rate_2: 0, bf_effect_duration: 0, bf_sell_multiplier: 0, bf_frenzy_count: 0,
       atlas_access: 0, boat_access: 0, catalog_access: 0,
+      submarine: 0,
     },
     consumables: { small_net: 0, big_net: 0, black_fish_bait: 0 },
     activeConsumable: null,
     stats: { totalCaught: 0, totalCasts: 0, totalUpgradesBought: 0 },
     materials: {},
+    subMode: false, subX: 0.5, subY: 0.5,
     baitTimer: 0, baitCooldown: 0,
     multiCastTimer: 0, multiCastCooldown: 0,
     autoHookTimer: 0, autoHookTarget: null, netZoneCooldown: 0, netCooldown: 0,
@@ -1593,8 +1655,20 @@ function performPrestige() {
   // Restore preserved data
   state.prestige = savedPrestige;
   state.catalogCaught = savedCatalog;
+  state.achievementsCompleted = savedAchievements;
   state.sfxVolume = savedSfx;
   state.musicVolume = savedMusic;
+
+  // Apply zone skip prestige upgrade
+  const zoneSkipLevel = state.prestige.upgrades.pearl_zone_skip || 0;
+  if (zoneSkipLevel > 0) {
+    for (let z = 1; z <= Math.min(zoneSkipLevel, 10); z++) {
+      if (z < ZONES.length) {
+        if (!state.unlockedZones.includes(z)) state.unlockedZones.push(z);
+        if (!state.bossesDefeated.includes(z)) state.bossesDefeated.push(z);
+      }
+    }
+  }
 
   // Reset canvas state
   cv.fish = []; cv.hook = null; cv.cooldown = 0; cv.placedNets = [];
@@ -1615,6 +1689,7 @@ function performPrestige() {
   document.getElementById('auto-sell-bar').style.display = 'none';
   document.getElementById('auto-bait-toggle').style.display = 'none';
   document.getElementById('auto-multi-toggle').style.display = 'none';
+  document.getElementById('sub-toggle').style.display = 'none';
 
   updateZoneOverlay();
   updateAllGoldDisplays();

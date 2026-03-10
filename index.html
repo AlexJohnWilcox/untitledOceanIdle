@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>UNTITLED OCEAN IDLE</title>
+  <title>BUY THE SEA</title>
   <link rel="icon" type="image/png" href="Logo.png">
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
@@ -14,22 +14,35 @@
   <div id="screen-title" class="title-screen">
     <canvas id="title-canvas"></canvas>
     <div class="title-content">
-      <div class="title-name">UNTITLED OCEAN IDLE</div>
+      <div class="title-name">BUY THE SEA</div>
       <div class="title-author">A Game by Alex Wilcox</div>
-      <button id="btn-enter" class="title-enter-btn">ENTER THE WATER?</button>
+      <button id="btn-enter" class="title-enter-btn">Enter the Water?</button>
     </div>
     <button id="btn-title-import" class="title-import-btn">IMPORT SAVE</button>
+  </div>
+
+  <!-- ══ SCREEN: ACHIEVEMENTS ══ -->
+  <div id="screen-achievements" class="screen">
+    <div class="screen-topbar">
+      <button class="back-btn" id="btn-back-achievements">← RETURN</button>
+      <span class="screen-title">ACHIEVEMENTS</span>
+      <span class="gold-display">✧ <strong id="gold-achievements">0</strong></span>
+    </div>
+    <div id="achievements-content" class="screen-content">
+      <div id="achievements-list"></div>
+    </div>
   </div>
 
   <!-- ══ SCREEN: FISHING ══ -->
   <div id="screen-fishing" class="screen">
     <div id="fishing-hud">
       <div id="fishing-hud-left">
+        <span id="fishing-title" style="font-size:0.9rem;font-weight:bold;color:var(--green);text-shadow:0 0 12px var(--green);letter-spacing:3px;">BUY THE SEA</span>
         <span id="fishing-zone-label"></span>
       </div>
-      <span id="fishing-title">UNTITLED OCEAN IDLE</span>
       <div id="fishing-hud-right">
         <div id="notif-area"></div>
+        <button class="save-tb-btn" id="btn-achievements-fishing" title="ACHIEVEMENTS">★</button>
         <button class="save-tb-btn" id="btn-menu" title="MENU">☰</button>
       </div>
     </div>
@@ -58,7 +71,7 @@
       </div>
     </div>
 
-    <div id="gold-float"><span class="gold-icon">◈</span> <strong id="gold-fishing">0</strong></div>
+    <div id="gold-float"><span class="gold-icon">✧</span> <strong id="gold-fishing">0</strong></div>
     <div id="fishing-nav">
       <div id="nav-left">
         <div id="consumables-bar"></div>
@@ -86,6 +99,10 @@
             </label>
             <span id="auto-sell-label" class="auto-hook-nav-label">SELL</span>
           </div>
+        </div>
+        <div id="sub-toggle" style="display:none">
+          <button id="btn-sub-rod" class="weapon-btn weapon-active" title="FISHING ROD">ROD</button>
+          <button id="btn-sub-mode" class="weapon-btn" title="SUBMARINE">SUB</button>
         </div>
         <button id="btn-shop"     class="bubble-btn" style="display:none">FISHMONGER'S REFUGE</button>
         <button id="btn-upgrades" class="bubble-btn" style="display:none">THE LAB</button>
@@ -119,7 +136,7 @@
     <div class="screen-topbar">
       <button class="back-btn" id="btn-back-shop">← RETURN TO WATER</button>
       <span class="screen-title">FISHMONGER'S REFUGE</span>
-      <span class="gold-display">◈ <strong id="gold-shop">0</strong></span>
+      <span class="gold-display">✧ <strong id="gold-shop">0</strong></span>
     </div>
     <div id="shop-content" class="screen-content">
       <div id="shop-layout">
@@ -139,7 +156,7 @@
     <div class="screen-topbar">
       <button class="back-btn" id="btn-back-upgrades">← RETURN TO WATER</button>
       <span class="screen-title">THE LAB</span>
-      <span class="gold-display">◈ <strong id="gold-upgrades">0</strong></span>
+      <span class="gold-display">✧ <strong id="gold-upgrades">0</strong></span>
     </div>
     <div id="upgrades-tabs"></div>
     <div id="upgrades-content" class="screen-content">
@@ -152,7 +169,7 @@
     <div class="screen-topbar">
       <button class="back-btn" id="btn-back-atlas">← RETURN TO WATER</button>
       <span class="screen-title">THE ATLAS</span>
-      <span class="gold-display">◈ <strong id="gold-atlas">0</strong></span>
+      <span class="gold-display">✧ <strong id="gold-atlas">0</strong></span>
     </div>
     <div id="atlas-content" class="screen-content">
       <div id="atlas-chart"></div>
@@ -164,7 +181,7 @@
     <div class="screen-topbar">
       <button class="back-btn" id="btn-back-boat">← RETURN TO WATER</button>
       <span class="screen-title">THE BOAT</span>
-      <span class="gold-display">◈ <strong id="gold-boat">0</strong></span>
+      <span class="gold-display">✧ <strong id="gold-boat">0</strong></span>
     </div>
     <div id="boat-content" class="screen-content">
       <div id="boat-settings"></div>
@@ -184,7 +201,7 @@
     <div class="screen-topbar">
       <button class="back-btn" id="btn-back-catalog">← RETURN TO WATER</button>
       <span class="screen-title">THE CATALOG</span>
-      <span class="gold-display">◈ <strong id="gold-catalog">0</strong></span>
+      <span class="gold-display">✧ <strong id="gold-catalog">0</strong></span>
     </div>
     <div id="catalog-content" class="screen-content">
       <div id="catalog-content-inner"></div>
@@ -306,8 +323,10 @@
     </div>
   </div>
 
+  <script src="utils.js"></script>
   <script src="data.js"></script>
   <script src="state.js"></script>
+  <script src="audio.js"></script>
   <script src="canvas.js"></script>
   <script src="canvas-backgrounds.js"></script>
   <script src="fish.js"></script>
